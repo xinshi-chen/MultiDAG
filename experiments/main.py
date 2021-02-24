@@ -1,9 +1,9 @@
-from neuralalgo.data_generator import QuaSPDataset
-from neuralalgo.common.cmd_args import cmd_args
-from neuralalgo.common.consts import DEVICE
-from neuralalgo.model_algos import GD, NAG, MLPRNN, OptAlgo
-from neuralalgo.model import QNet
-from neuralalgo.trainer import QuaSPTrainer
+from gan4dag.data_generator import QuaSPDataset
+from gan4dag.common.cmd_args import cmd_args
+from gan4dag.common.consts import DEVICE
+from gan4dag.model_algos import GD, NAG, MLPRNN, OptAlgo
+from gan4dag.model import QNet
+from gan4dag.trainer import QuaSPTrainer
 import random
 import numpy as np
 import torch

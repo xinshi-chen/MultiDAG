@@ -1,8 +1,8 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-from neuralalgo.common.consts import DEVICE, NONLINEARITIES
-from neuralalgo.common.utils import weights_init
+from gan4dag.common.consts import DEVICE, NONLINEARITIES
+from gan4dag.common.utils import weights_init
 
 
 class QNet(nn.Module):

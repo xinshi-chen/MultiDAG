@@ -1,7 +1,7 @@
 import torch
 from tqdm import tqdm
-from neuralalgo.common.utils import l2
-from neuralalgo.model import qeq
+from gan4dag.common.utils import l2
+from gan4dag.model import qeq
 import math
 import numpy as np
 
