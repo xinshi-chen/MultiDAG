@@ -3,7 +3,7 @@ import numpy as np
 from gan4dag.dag_utils import sampler, is_dag, project_to_dag
 
 
-class Dataset(object):
+class LsemDataset(object):
     """
     synthetic dataset
     Linear SEM
@@ -36,8 +36,8 @@ class Dataset(object):
 
         self.train_data = dict()
         self.train_data['dag'] = self.gen_dags(num_dags)
-        self.train_data['dag']['data'] = self.gen_batch_sample(W=self.train_data['dag'],
-                                                               n=self.num_sample)
+        self.train_data['data'] = self.gen_batch_sample(W=self.train_data['dag'],
+                                                        n=self.num_sample)
 
     def gen_dags(self, m):
         """
@@ -66,12 +66,12 @@ class Dataset(object):
     def gen_batch_sample(self, W, n):
         assert len(W.shape) == 3
         num_dags = W.shape[0]
-        X = np.zeros(num_dags, n, self.d)
+        X = np.zeros([num_dags, n, self.d])
         for i in range(num_dags):
             X[i, :, :] = sampler(W[i], n, self.noise_mean, self.noise_sd, noise_type='gauss')
         return X
 
-    def load_data(self, batch_size, auto_reset=False, shuffle=True):
+    def load_data(self, batch_size, auto_reset=False, shuffle=True, device=None):
 
         X = torch.tensor(self.train_data['data'])
         while True:
@@ -86,11 +86,34 @@ class Dataset(object):
                         num_samples = self.num_dags - pos
                 else:
                     num_samples = batch_size
-
-                yield X[pos : pos + num_samples, :, :]
+                if device is None:
+                    yield X[pos : pos + num_samples, :, :].detach()
+                else:
+                    yield X[pos : pos + num_samples, :, :].detach().to(device)
             if not auto_reset:
                 break
 
 
+if __name__ == '__main__':
+    d = 5
+    num_dags = 30
+    num_sample = 5
+    threshold = 0.1
+    sparsity = 1.0
 
+    W_mean = np.random.normal(size=[d, d]) * 3
+    W_sd = np.random.rand(d, d)
 
+    noise_mean = np.zeros(d)
+    noise_sd = np.ones(d)
+
+    dataset = LsemDataset(W_mean, W_sd, sparsity, threshold, noise_mean, noise_sd, num_dags, num_sample)
+    batch_size = 10
+    from gan4dag.common.consts import DEVICE
+    data_loader = dataset.load_data(batch_size=10, device=DEVICE)
+
+    iterations = len(range(0, num_dags, batch_size))
+    for i in range(iterations):
+        x = next(data_loader)
+        print(i)
+        print(x)
