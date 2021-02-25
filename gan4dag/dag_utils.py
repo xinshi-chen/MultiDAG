@@ -2,6 +2,8 @@ import scipy.optimize as sopt
 import scipy.linalg as slin
 import numpy as np
 import networkx as nx
+from gan4dag.common.consts import DEVICE
+import torch
 
 
 def project_to_dag(W, sparsity=1.0, max_iter=10, h_tol=1e-3, rho_max=1e+16, w_threshold=0.1):
@@ -107,8 +109,68 @@ def project_notears(X, sparsity=1.0, max_iter=100, h_tol=1e-3, rho_max=1e+16, w_
     return W_est, P
 
 
+def sampler(W, n, noise_mean, noise_sd, noise_type='gauss'):
+    """
+    sample n samples from the LSEM defined by W and the noise distribution
+
+    :param W: weighted adjacency matrix of a DAG
+    :param n: number of samples
+    :param noise_mean: mean of noise distribution. An array of d entries.
+    :param noise_sd: standard variance of noise distribution. An array of d entries.
+    :param noise_type:
+
+    :return: X: [n, d] sample matrix
+    """
+
+    if isinstance(W, np.ndarray):
+        data_type = 'numpy'
+    elif torch.is_tensor(W):
+        data_type = 'torch'
+    else:
+        raise NotImplementedError('Adjacency matrix should be np.ndarray or torch.tensor.')
+
+    d = W.shape[0]
+
+    if data_type == 'numpy':
+        X = np.zeros([n, d])
+    else:
+        X = torch.zeros([n, d]).to(DEVICE)
+
+    if noise_type == 'gauss':
+
+        if data_type == 'numpy':
+            z0 = np.random.normal(size=(n, d))
+        else:
+            z0 = torch.normal(0, 1, size=(n, d)).to(DEVICE).detach()
+
+        z = z0 * noise_sd
+        z = z + noise_mean
+    else:
+        raise ValueError('unknown noise type')
+
+    # get the topological order of the DAG (no need to differentiate through this step)
+    if data_type == 'numpy':
+        G = nx.DiGraph(W)
+    else:
+        G = nx.DiGraph(W.detach().cpu().numpy())
+    ordered_vertices = list(nx.topological_sort(G))
+    assert len(ordered_vertices) == d
+    for j in ordered_vertices:
+        parents = list(G.predecessors(j))
+        if len(parents) > 0:
+            if data_type == 'numpy':
+                eta = X[:, parents].dot(W[parents, j])
+            else:
+                eta = torch.sum(X[:, parents] * W[parents, j], -1)  # the parameter W here should requires gradients
+        else:
+            eta = 0.0
+        X[:, j] = eta + z[:, j]
+
+    return X
+
+
 if __name__ == '__main__':
-    d = 10
+    d = 2
     threshold = 0.1
     sparsity = 1.0
     x = np.random.uniform(low=-2, high=2, size=[d, d])
@@ -120,3 +182,17 @@ if __name__ == '__main__':
     print(p)
     print('dagness')
     print(is_dag(p))
+
+    n = 30
+    mu = np.zeros(d)
+    sigma = np.ones(d)
+    x_np = sampler(y, n, mu, sigma)
+    print(x_np)
+    x_torch = sampler(torch.tensor(y), n, torch.tensor(mu), torch.tensor(sigma))
+    print(x_torch)
+
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    plt.scatter(x_np[:,0], x_np[:,1])
+    plt.scatter(x_torch.detach().numpy()[:,0], x_torch.detach().numpy()[:,1])
+    plt.show()
