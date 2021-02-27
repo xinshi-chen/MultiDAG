@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 from gan4dag.common.consts import DEVICE, NONLINEARITIES
-from gan4dag.common.utils import weights_init
+from gan4dag.common.utils import weights_init, MLP
 from gan4dag.dag_utils import project_to_dag, sampler
 import networkx as nx
 import numpy as np
@@ -62,15 +62,54 @@ class GenNet(nn.Module):
             X[i] = self.gen_one_X(n)
         return X
 
-# class DiscNet(nn.Module):
-#
-#     def __init__(self, d):
+
+class DiscNet(nn.Module):
+
+    def __init__(self, d,
+                 f_hidden_dims='32-32',
+                 f_nonlinearity='relu',
+                 output_hidden_dims='32-32-1',
+                 output_nonlinearity='relu'):
+        super(DiscNet, self).__init__()
+        self.d = d
+
+        # DeepSet based on f
+        self.f = MLP(input_dim=d,
+                     hidden_dims=f_hidden_dims,
+                     nonlinearity=f_nonlinearity,
+                     act_last=f_nonlinearity).to(DEVICE)
+
+        # Output layer
+        f_hidden_dims = tuple(map(int, f_hidden_dims.split("-")))
+        input_dim = f_hidden_dims[-1]
+        hidden_dims = tuple(map(int, output_hidden_dims.split("-")))
+        if hidden_dims[-1] != 1:
+            # make sure the output dim of MLP is 1
+            output_hidden_dims += '-1'
+        self.output_layer = MLP(input_dim=input_dim,
+                                hidden_dims=output_hidden_dims,
+                                nonlinearity=output_nonlinearity,
+                                act_last=None).to(DEVICE)
+
+        weights_init(self)
+
+    def forward(self, X):
+        """
+
+        :param X: [m, n, d] tensor. m is batch size. n is the number of samples. d is variable dimension.
+        :return: scores of dimension [m]
+        """
+        f_X = self.f(X)
+        DS_X = torch.mean(f_X, dim=1)  # DeepSet: 1/n sum_{i=1}^n f(X_i)
+        score = self.output_layer(DS_X)  # [m, 1]
+        return score.view(-1)
 
 
 if __name__ == '__main__':
     d = 5
-    m = 10
     gen = GenNet(d).to(DEVICE)
-    Z = torch.normal(0, 1, size=[m, d, d]).to(DEVICE)
-    W_gen = gen(Z)
-    print(W_gen)
+    X_gen = gen.gen_batch_X(batch_size=10, n=5)
+
+    disc = DiscNet(d).to(DEVICE)
+    scores = disc(X_gen)
+    print(scores)
