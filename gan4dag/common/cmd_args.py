@@ -19,10 +19,9 @@ cmd_opt.add_argument('-d', type=int, default=5, help='dimension of RV')
 cmd_opt.add_argument('-threshold', type=float, default=0.1)
 cmd_opt.add_argument('-sparsity', type=float, default=1.0, help='l1 penalty coefficient in the projection')
 
+# hyperparameters for training
 cmd_opt.add_argument('-num_dag', type=int, default=50, help='number of DAGs')
 cmd_opt.add_argument('-num_sample', type=int, default=10, help='number of observed samples')
-
-# hyperparameters for training
 cmd_opt.add_argument('-batch_size', type=int, default=2, help='batch size')
 cmd_opt.add_argument('-g_lr', type=float, default=1e-4, help='learning rate of generator')
 cmd_opt.add_argument('-d_lr', type=float, default=1e-4, help='learning rate of discriminator')
@@ -31,6 +30,8 @@ cmd_opt.add_argument('-num_epochs', type=int, default=100, help='num epochs')
 cmd_opt.add_argument('-g_optimizer', type=str, default='adam')
 cmd_opt.add_argument('-d_optimizer', type=str, default='adam')
 cmd_opt.add_argument('-save_itr', type=int, default=500, help='how many iterations to save the trained states')
+
+cmd_opt.add_argument('-num_sample_gen', type=int, default=100, help='number of observed samples for generator')
 
 # not used yet
 cmd_opt.add_argument('-save_dir', type=str, default='./scratch', help='save folder')

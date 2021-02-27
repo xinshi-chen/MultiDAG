@@ -8,7 +8,7 @@ D_Loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
 
 
 class LsemTrainer:
-    def __init__(self, g_net, d_net, g_optimizer, d_optimizer, data_base, save_itr=500):
+    def __init__(self, g_net, d_net, g_optimizer, d_optimizer, data_base, num_sample_gen, save_itr=500):
         self.g_net = g_net
         self.d_net = d_net
         self.db = data_base
@@ -16,6 +16,7 @@ class LsemTrainer:
         self.d_optimizer = d_optimizer
         self.train_itr = 0
         self.save_itr = save_itr
+        self.num_sample_gen = num_sample_gen
 
     def _train_epoch(self, epoch, tot_epoch, batch_size, progress_bar, dsc):
         self.g_net.train()
@@ -33,7 +34,6 @@ class LsemTrainer:
         for it, X in enumerate(data_loader):
 
             m = X.shape[0]  # number of DAGs in this batch
-            n = X.shape[1]  # number of observed samples for each DAG
 
             # ---------------------
             #  Train Discriminator
@@ -42,7 +42,7 @@ class LsemTrainer:
             self.d_optimizer.zero_grad()
 
             # generate fake samples [m, n, d]
-            X_fake, k = self.g_net.gen_batch_X(batch_size=m, n=n)
+            X_fake, k = self.g_net.gen_batch_X(batch_size=m, n=self.num_sample_gen)
             num_invalid_W += k
 
             # compute loss
@@ -120,6 +120,7 @@ if __name__ == '__main__':
 
     num_dag = cmd_args.num_dag
     num_sample = cmd_args.num_sample
+    num_sample_gen = cmd_args.num_sample_gen
     threshold = cmd_args.threshold
     sparsity = cmd_args.sparsity
     d = cmd_args.d
@@ -165,5 +166,5 @@ if __name__ == '__main__':
     # ---------------------
     #  Trainer
     # ---------------------
-    trainer = LsemTrainer(gen_net, disc_net, g_opt, d_opt, db, save_itr=cmd_args.save_itr)
+    trainer = LsemTrainer(gen_net, disc_net, g_opt, d_opt, db, save_itr=cmd_args.save_itr, num_sample_gen=num_sample_gen)
     trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size)
