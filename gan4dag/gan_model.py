@@ -1,11 +1,8 @@
 import torch.nn as nn
 import torch
-import torch.nn.functional as F
-from gan4dag.common.consts import DEVICE, NONLINEARITIES
+from gan4dag.common.consts import DEVICE
 from gan4dag.common.utils import weights_init, MLP
 from gan4dag.dag_utils import project_to_dag, sampler
-import networkx as nx
-import numpy as np
 from torch.nn.parameter import Parameter
 
 
