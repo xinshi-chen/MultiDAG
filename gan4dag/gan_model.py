@@ -30,8 +30,10 @@ class GenNet(nn.Module):
 
         return W
 
-    def gen_one_set_X(self, n):
+    def gen_one_X(self, n):
 
+        # (1) Generate z -> W; and compute projection matrix P.
+        # Do not differentiate through this part.
         with torch.no_grad():
             while 1:
                 z = torch.normal(0, 1, size=(self.d, self.d)).to(DEVICE)
@@ -43,13 +45,21 @@ class GenNet(nn.Module):
                 else:
                     print('W is far from a dag and cannot project.')
 
-        # The following part is differentiable
+        # (2) z -> W; W -> W * P
+        # This part is differentiable
         W = self.forward(z.detach())
         W = W * P  # make it a DAG
         # TODO: should have one more layer to adjust the weight, in case the sparsity/threshold is not correct
 
         # samples
         X = sampler(W, n, self.noise_mean, self.noise_sd, noise_type='gauss')
+        return X
+
+    def gen_batch_X(self, batch_size, n):
+        X = torch.zeros(size=[batch_size, n, self.d]).to(DEVICE)
+        # TODO: speed up?
+        for i in range(batch_size):
+            X[i] = self.gen_one_X(n)
         return X
 
 # class DiscNet(nn.Module):
@@ -64,67 +74,3 @@ if __name__ == '__main__':
     Z = torch.normal(0, 1, size=[m, d, d]).to(DEVICE)
     W_gen = gen(Z)
     print(W_gen)
-
-
-# class QNet(nn.Module):
-#
-#     def __init__(self, args, hidden_dims_eigs, activation='relu', bias_init='zero'):
-#         super(QNet, self).__init__()
-#
-#         self.d = args.d
-#         self.dim_in = args.dim_in
-#         self.mu = args.mu
-#         self.L = args.L
-#         self.temp = args.temperature
-#         if activation != 'none':
-#             self.act_fcn = NONLINEARITIES[activation]
-#
-#         # generate diagonals
-#         layers = []
-#         hidden_dims_eigs = tuple(map(int, hidden_dims_eigs.split("-")))
-#         prev_size = args.dim_in
-#         for h in hidden_dims_eigs:
-#             if h>0:
-#                 layers.append(nn.Linear(prev_size, h, bias=True))
-#                 prev_size = h
-#         layers.append(nn.Linear(prev_size, self.d-2, bias=True))
-#         self.layers_w = nn.ModuleList(layers)
-#
-#         weights_init(self, bias=bias_init)
-#
-#     def forward(self, u):
-#         batch = u.shape[0]
-#
-#         # generate diagonals
-#         for l, layer in enumerate(self.layers_w):
-#             if l == 0:
-#                 e = layer(u)
-#             else:
-#                 e = layer(e)
-#             if l + 1 < len(self.layers_w):
-#                 e = self.act_fcn(e)
-#         # shift to [mu, L]
-#         e = F.softmax(e, dim=-1)
-#         e = e * (self.L - self.mu) + self.mu
-#
-#         # concat with mu and L
-#         eigen1 = torch.ones([batch, 1]).to(DEVICE) * self.L
-#         eigend = torch.ones([batch, 1]).to(DEVICE) * self.mu
-#         eigens = torch.cat([eigen1.detach(), e, eigend.detach()], dim=-1)
-#
-#         return eigens
-#
-#
-# def qeq(q, e):
-#     batch, d = e.shape
-#     qe = q * e.view(batch, 1, d)
-#     w = torch.matmul(qe, q.transpose(-1, -2))
-#     return w
-#
-#
-# def qeq_inv(q, e):
-#     batch, d = e.shape
-#     e_inv = 1 / e
-#     qe_inv = q * e_inv.view(batch, 1, d)
-#     w_inv = torch.matmul(qe_inv, q.transpose(-1, -2))
-#     return w_inv
