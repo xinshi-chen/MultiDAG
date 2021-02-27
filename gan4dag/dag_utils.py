@@ -132,16 +132,16 @@ def sampler(W, n, noise_mean, noise_sd, noise_type='gauss'):
     d = W.shape[0]
 
     if data_type == 'numpy':
-        X = np.zeros([n, d])
+        X = np.zeros([n, d], dtype=np.float32)
     else:
         X = torch.zeros([n, d]).to(DEVICE)
 
     if noise_type == 'gauss':
 
         if data_type == 'numpy':
-            z0 = np.random.normal(size=(n, d))
+            z0 = np.random.normal(size=(n, d)).astype(np.float32)
         else:
-            z0 = torch.normal(0, 1, size=(n, d)).to(DEVICE).detach()
+            z0 = torch.normal(0, 1, size=(n, d)).float().to(DEVICE).detach()
 
         z = z0 * noise_sd
         z = z + noise_mean
@@ -165,7 +165,6 @@ def sampler(W, n, noise_mean, noise_sd, noise_type='gauss'):
         else:
             eta = 0.0
         X[:, j] = eta + z[:, j]
-
     return X
 
 

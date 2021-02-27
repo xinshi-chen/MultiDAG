@@ -31,16 +31,17 @@ class GenNet(nn.Module):
 
         # (1) Generate z -> W; and compute projection matrix P.
         # Do not differentiate through this part.
+        num_passed_z = 0
         with torch.no_grad():
             while 1:
-                z = torch.normal(0, 1, size=(self.d, self.d)).to(DEVICE)
+                z = torch.normal(0, 1, size=(self.d, self.d)).float().to(DEVICE)
                 w = self.forward(z).detach()
                 _, P = project_to_dag(w.cpu().numpy(), sparsity=1.0, w_threshold=0.1)
                 if P is not None:
                     P = torch.tensor(P).to(DEVICE).detach()
                     break
                 else:
-                    print('W is far from a dag and cannot project.')
+                    num_passed_z += 1
 
         # (2) z -> W; W -> W * P
         # This part is differentiable
@@ -50,14 +51,16 @@ class GenNet(nn.Module):
 
         # samples
         X = sampler(W, n, self.noise_mean, self.noise_sd, noise_type='gauss')
-        return X
+        return X, num_passed_z
 
     def gen_batch_X(self, batch_size, n):
+        num_passed_z = 0
         X = torch.zeros(size=[batch_size, n, self.d]).to(DEVICE)
         # TODO: speed up?
         for i in range(batch_size):
-            X[i] = self.gen_one_X(n)
-        return X
+            X[i], k = self.gen_one_X(n)
+            num_passed_z += k
+        return X, num_passed_z
 
 
 class DiscNet(nn.Module):
@@ -105,7 +108,7 @@ class DiscNet(nn.Module):
 if __name__ == '__main__':
     d = 5
     gen = GenNet(d).to(DEVICE)
-    X_gen = gen.gen_batch_X(batch_size=10, n=5)
+    X_gen, _ = gen.gen_batch_X(batch_size=10, n=5)
 
     disc = DiscNet(d).to(DEVICE)
     scores = disc(X_gen)

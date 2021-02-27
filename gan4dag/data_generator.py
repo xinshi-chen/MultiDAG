@@ -44,7 +44,7 @@ class LsemDataset(object):
         :param m: number of DAGs
         :return: DAGs represented by matrix W
         """
-        W = np.random.normal(size=(m, self.d, self.d))
+        W = np.random.normal(size=(m, self.d, self.d)).astype(np.float32)
         W = W * self.W_sd
         W = W + self.W_mean
 
@@ -55,7 +55,7 @@ class LsemDataset(object):
                                           max_iter=10, h_tol=1e-3, rho_max=1e+16)
                 if w_dag is None:
                     # resample W
-                    W[i] = np.random.normal(size=(self.d, self.d))
+                    W[i] = np.random.normal(size=(self.d, self.d)).astype(np.float32)
                     W[i] = W[i] * self.W_sd
                     W[i] = W[i] + self.W_mean
                 else:
@@ -66,7 +66,7 @@ class LsemDataset(object):
     def gen_batch_sample(self, W, n):
         assert len(W.shape) == 3
         num_dags = W.shape[0]
-        X = np.zeros([num_dags, n, self.d])
+        X = np.zeros([num_dags, n, self.d], dtype=np.float32)
         for i in range(num_dags):
             X[i, :, :] = sampler(W[i], n, self.noise_mean, self.noise_sd, noise_type='gauss')
         return X

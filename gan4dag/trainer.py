@@ -1,6 +1,6 @@
 import torch
 from tqdm import tqdm
-from gan4dag.common.consts import DEVICE
+from gan4dag.common.consts import DEVICE, OPTIMIZER
 import math
 
 
@@ -29,6 +29,7 @@ class LsemTrainer:
         total_d_loss = 0.0
         total_g_loss = 0.0
         g_loss_batch = 0.0
+        num_invalid_W = 0
         for it, X in enumerate(data_loader):
 
             m = X.shape[0]  # number of DAGs in this batch
@@ -41,7 +42,8 @@ class LsemTrainer:
             self.d_optimizer.zero_grad()
 
             # generate fake samples [m, n, d]
-            X_fake = self.g_net.gen_batch_X(batch_size=m, n=n)
+            X_fake, k = self.g_net.gen_batch_X(batch_size=m, n=n)
+            num_invalid_W += k
 
             # compute loss
             score_fake = self.d_net(X_fake.detach())  # [m]
@@ -56,8 +58,9 @@ class LsemTrainer:
 
             d_loss_batch = d_loss.item()
             total_d_loss += d_loss_batch
-            progress_bar.set_description('[Epoch %.2f] [D: %.3f] [G: %.3f]' + dsc
-                                         % (epoch + float(it + 1) / num_iterations, d_loss_batch, g_loss_batch))
+            progress_bar.set_description("[Epoch %.2f] [D: %.3f] [G: %.3f] [invalid W: %d]" %
+                                         (epoch + float(it + 1) / num_iterations, d_loss_batch, g_loss_batch,
+                                          num_invalid_W) + dsc)
 
             # -----------------
             #  Train Generator
@@ -75,8 +78,9 @@ class LsemTrainer:
 
             g_loss_batch = g_loss.item()
             total_g_loss += g_loss_batch
-            progress_bar.set_description('[Epoch %.2f] [D: %.3f] [G: %.3f]' + dsc
-                                         % (epoch + float(it + 1) / num_iterations, d_loss_batch, g_loss_batch))
+            progress_bar.set_description("[Epoch %.2f] [D: %.3f] [G: %.3f] [invalid W: %d]" %
+                                         (epoch + float(it + 1) / num_iterations, d_loss_batch, g_loss_batch,
+                                          num_invalid_W) + dsc)
 
             # -----------------
             #  Save
@@ -96,10 +100,70 @@ class LsemTrainer:
         """
         progress_bar = tqdm(range(epochs))
         dsc = ''
-
-        best_loss = math.inf
+        print('*** Start training ***')
         for e in progress_bar:
             self._train_epoch(e, epochs, batch_size, progress_bar, dsc)
             # torch.save(self.algo_net.state_dict(), self.algo_model_dump)
 
         return
+
+
+if __name__ == '__main__':
+    from gan4dag.common.cmd_args import cmd_args
+    from gan4dag.data_generator import LsemDataset
+    import random
+    import numpy as np
+
+    random.seed(cmd_args.seed)
+    np.random.seed(cmd_args.seed)
+    torch.manual_seed(cmd_args.seed)
+
+    num_dag = cmd_args.num_dag
+    num_sample = cmd_args.num_sample
+    threshold = cmd_args.threshold
+    sparsity = cmd_args.sparsity
+    d = cmd_args.d
+
+    # ---------------------
+    #  Synthetic Dataset
+    # ---------------------
+
+    # TODO: ground-truth meta-distribution
+    W_mean = np.random.normal(size=[d, d]).astype(np.float32) * 3
+    W_sd = np.random.rand(d, d).astype(np.float32)
+    noise_mean = np.zeros(d, dtype=np.float32)
+    noise_sd = np.ones(d, dtype=np.float32)
+
+    print('*** Loading data ***')
+
+    db = LsemDataset(W_mean, W_sd, sparsity, threshold, noise_mean, noise_sd, num_dag, num_sample)
+
+    # ---------------------
+    #  Initialize Networks
+    # ---------------------
+    from gan4dag.gan_model import GenNet, DiscNet
+
+    print('*** Initializing networks ***')
+    gen_net = GenNet(d=d).to(DEVICE)
+    disc_net = DiscNet(d=d,
+                       f_hidden_dims=cmd_args.f_hidden_dim,
+                       f_nonlinearity=cmd_args.f_act,
+                       output_hidden_dims=cmd_args.output_hidden_dim,
+                       output_nonlinearity=cmd_args.output_act).to(DEVICE)
+
+    # ---------------------
+    #  Optimizer
+    # ---------------------
+
+    g_opt = OPTIMIZER[cmd_args.g_optimizer](gen_net.parameters(),
+                                            lr=cmd_args.g_lr,
+                                            weight_decay=cmd_args.weight_decay)
+    d_opt = OPTIMIZER[cmd_args.d_optimizer](disc_net.parameters(),
+                                            lr=cmd_args.d_lr,
+                                            weight_decay=cmd_args.weight_decay)
+
+    # ---------------------
+    #  Trainer
+    # ---------------------
+    trainer = LsemTrainer(gen_net, disc_net, g_opt, d_opt, db, save_itr=cmd_args.save_itr)
+    trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size)

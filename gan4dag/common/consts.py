@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 from matplotlib import cm
+import torch.optim as optim
 
 
 import argparse
@@ -56,6 +57,12 @@ NONLINEARITIES = {
     "swish": Swish(),
     "square": Lambda(lambda x: x**2),
     "identity": Lambda(lambda x: x),
+}
+
+OPTIMIZER = {
+    'adam': optim.Adam,
+    'sgd': optim.SGD,
+    'adagrad': optim.Adagrad
 }
 
 
