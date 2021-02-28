@@ -92,6 +92,19 @@ class LsemTrainer:
 
     def save(self):
         # TODO: save network or some stats
+        with torch.no_grad():
+            W_mean_true = self.db.W_mean
+            W_sd_true = self.db.W_sd
+            noise_mean_true = self.db.noise_mean
+            noise_sd_true = self.db.noise_sd
+
+            W_mean_err = torch.sqrt(((W_mean_true - self.g_net.W.data) ** 2).sum()).item()
+            W_sd_err = torch.sqrt(((W_sd_true - self.g_net.V.data) ** 2).sum()).item()
+            noise_mean_err = torch.sqrt(((noise_mean_true - self.g_net.noise_mean.data)**2).sum()).item()
+            noise_sd_err = torch.sqrt(((noise_sd_true - self.g_net.noise_sd.data)**2).sum()).item()
+
+            print('Error: W_m: %.3f, W_s: %.3f, n_m: %.3f, n_d: %.3f' % (W_mean_err, W_sd_err, noise_mean_err, noise_sd_err))
+
         return
 
     def train(self, epochs, batch_size):
