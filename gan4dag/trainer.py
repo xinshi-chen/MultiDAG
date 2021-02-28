@@ -1,7 +1,7 @@
 import torch
 from tqdm import tqdm
 from gan4dag.common.consts import DEVICE, OPTIMIZER
-import math
+import numpy as np
 
 
 D_Loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
@@ -92,18 +92,17 @@ class LsemTrainer:
 
     def save(self):
         # TODO: save network or some stats
-        with torch.no_grad():
-            W_mean_true = self.db.W_mean
-            W_sd_true = self.db.W_sd
-            noise_mean_true = self.db.noise_mean
-            noise_sd_true = self.db.noise_sd
+        W_mean_true = self.db.W_mean
+        W_sd_true = self.db.W_sd
+        noise_mean_true = self.db.noise_mean
+        noise_sd_true = self.db.noise_sd
 
-            W_mean_err = torch.sqrt(((W_mean_true - self.g_net.W.data) ** 2).sum()).item()
-            W_sd_err = torch.sqrt(((W_sd_true - self.g_net.V.data) ** 2).sum()).item()
-            noise_mean_err = torch.sqrt(((noise_mean_true - self.g_net.noise_mean.data)**2).sum()).item()
-            noise_sd_err = torch.sqrt(((noise_sd_true - self.g_net.noise_sd.data)**2).sum()).item()
+        W_mean_err = np.sqrt(((W_mean_true - self.g_net.W.data.cpu().numpy()) ** 2).sum())
+        W_sd_err = np.sqrt(((W_sd_true - self.g_net.V.data.cpu().numpy()) ** 2).sum())
+        noise_mean_err = np.sqrt(((noise_mean_true - self.g_net.noise_mean.data.cpu().numpy())**2).sum())
+        noise_sd_err = np.sqrt(((noise_sd_true - self.g_net.noise_sd.data.cpu().numpy())**2).sum())
 
-            print('Error: W_m: %.3f, W_s: %.3f, n_m: %.3f, n_d: %.3f' % (W_mean_err, W_sd_err, noise_mean_err, noise_sd_err))
+        print('Error: W_m: %.3f, W_s: %.3f, n_m: %.3f, n_d: %.3f' % (W_mean_err, W_sd_err, noise_mean_err, noise_sd_err))
 
         return
 
