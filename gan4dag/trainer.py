@@ -88,13 +88,13 @@ class LsemTrainer:
             # -----------------
             self.train_itr += 1
             if (self.train_itr % self.save_itr == 0) or ((epoch == tot_epoch-1) and (it == num_iterations-1)):
-                self.save()
+                self.save(self.train_itr)
         return
 
-    def save(self):
+    def save(self, itr):
         # TODO: save network or some stats
         data_hp = 'LSEM-d-%d-ts-%.2f-sp-%.2f' % (self.db.d, self.db.W_threshold, self.db.W_sparsity)
-        dump = self.save_dir + '/' + data_hp + '/' + self.model_dump
+        dump = self.save_dir + '/' + data_hp + '/Itr-%d' % itr + self.model_dump
         torch.save(self.g_net.state_dict(), dump)
 
     def train(self, epochs, batch_size):
@@ -106,7 +106,6 @@ class LsemTrainer:
         print('*** Start training ***')
         for e in progress_bar:
             self._train_epoch(e, epochs, batch_size, progress_bar, dsc)
-            # torch.save(self.algo_net.state_dict(), self.algo_model_dump)
 
         return
 
