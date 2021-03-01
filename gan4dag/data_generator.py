@@ -23,16 +23,16 @@ class LsemDataset(object):
         self.W_sparsity = W_sparsity
         self.W_threshold = W_threshold
 
-        hp = 'LSEM-d-%d' % self.d
+        self.hp = 'LSEM-d-%d-ts-%.2f-sp-%.2f' % (self.d, self.W_threshold, self.W_sparsity)
 
         # ---------------------
         #  Load Meta Distribution
         # ---------------------
 
-        data_dir = '../data'
-        if not os.path.isdir(data_dir):
-            os.makedirs(data_dir)
-        self.data_pkl = data_dir + '/' + hp + '-meta.pkl'
+        self.data_dir = '../data'
+        if not os.path.isdir(self.data_dir):
+            os.makedirs(self.data_dir)
+        self.data_pkl = self.data_dir + '/' + self.hp + '-meta.pkl'
 
         if os.path.isfile(self.data_pkl):
             with open(self.data_pkl, 'rb') as f:
@@ -63,24 +63,31 @@ class LsemDataset(object):
         :param m: number of DAGs
         :return: DAGs represented by matrix W
         """
-        W = np.random.normal(size=(m, self.d, self.d)).astype(np.float32)
-        W = W * self.W_sd
-        W = W + self.W_mean
+        data_pkl = self.data_dir + '/' + self.hp + '-train-dag-%d.pkl' % m
+        if os.path.isfile(data_pkl):
+            with open(data_pkl, 'rb') as f:
+                W = pkl.load(f)
+        else:
+            W = np.random.normal(size=(m, self.d, self.d)).astype(np.float32)
+            W = W * self.W_sd
+            W = W + self.W_mean
 
-        # project to DAGs sequentially
-        progress_bar = tqdm(range(m))
-        for i in progress_bar:
-            while True:
-                w_dag, _ = project_to_dag(W[i], sparsity=self.W_sparsity, w_threshold=self.W_threshold, max_iter=10,
-                                          h_tol=1e-3, rho_max=1e+16)
-                if w_dag is None:
-                    # resample W
-                    W[i] = np.random.normal(size=(self.d, self.d)).astype(np.float32)
-                    W[i] = W[i] * self.W_sd
-                    W[i] = W[i] + self.W_mean
-                else:
-                    W[i] = w_dag
-                    break
+            # project to DAGs sequentially
+            progress_bar = tqdm(range(m))
+            for i in progress_bar:
+                while True:
+                    w_dag, _ = project_to_dag(W[i], sparsity=self.W_sparsity, w_threshold=self.W_threshold, max_iter=10,
+                                              h_tol=1e-3, rho_max=1e+16)
+                    if w_dag is None:
+                        # resample W
+                        W[i] = np.random.normal(size=(self.d, self.d)).astype(np.float32)
+                        W[i] = W[i] * self.W_sd
+                        W[i] = W[i] + self.W_mean
+                    else:
+                        W[i] = w_dag
+                        break
+            with open(data_pkl, 'wb') as f:
+                pkl.dump(W, f)
         return W
 
     def gen_batch_sample(self, W, n):
