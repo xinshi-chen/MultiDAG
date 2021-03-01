@@ -28,13 +28,12 @@ if __name__ == '__main__':
     sparsity = cmd_args.sparsity
     d = cmd_args.d
 
-    hp_data = 'd-%d-ts-%.2f-sp-%.2f' % (cmd_args.d, cmd_args.threshold, cmd_args.sparsity)
     hp_arch = 'f-%s-%s-out-%s-%s' % (cmd_args.f_hidden_dim, cmd_args.f_act, cmd_args.output_hidden_dim,
                                      cmd_args.output_act)
-    hp_train = 'm-%d-n-%d-gen-%d-ep-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dags, cmd_args.num_sample,
+    hp_train = 'm-%d-n-%d-gen-%d-ep-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample,
                                                                    num_sample_gen, cmd_args.num_epochs,
                                                                    cmd_args.batch_size, cmd_args.g_lr, cmd_args.d_lr)
-    model_dump = hp_data + '-' + hp_arch + '-' + hp_train + '.dump'
+    model_dump = hp_arch + '-' + hp_train + '.dump'
 
     # ---------------------
     #  Synthetic Dataset

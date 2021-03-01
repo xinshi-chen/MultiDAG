@@ -18,7 +18,7 @@ class LsemDataset(object):
         :param num_sample: number of samples observed from each training DAG
         """
 
-        self.d = W_mean.shape[0]
+        self.d = d
         self.W_sparsity = W_sparsity
         self.W_threshold = W_threshold
 
@@ -29,6 +29,8 @@ class LsemDataset(object):
         # ---------------------
 
         data_dir = '../data'
+        if not os.path.isdir(data_dir):
+            os.makedirs(data_dir)
         self.data_pkl = data_dir + '/' + hp + '-meta.pkl'
 
         if os.path.isfile(self.data_pkl):

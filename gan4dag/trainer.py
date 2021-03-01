@@ -92,9 +92,11 @@ class LsemTrainer:
         return
 
     def save(self, itr):
-        # TODO: save network or some stats
         data_hp = 'LSEM-d-%d-ts-%.2f-sp-%.2f' % (self.db.d, self.db.W_threshold, self.db.W_sparsity)
-        dump = self.save_dir + '/' + data_hp + '/Itr-%d' % itr + self.model_dump
+        dump = self.save_dir + '/' + data_hp 
+        if not os.path.isdir(dump):
+            os.makedirs(dump)
+        dump += '/Itr-%d' % itr + self.model_dump
         torch.save(self.g_net.state_dict(), dump)
 
     def train(self, epochs, batch_size):
