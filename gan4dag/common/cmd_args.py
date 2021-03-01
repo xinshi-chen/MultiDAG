@@ -18,6 +18,7 @@ cmd_opt.add_argument('-output_act', type=str, default='relu')
 cmd_opt.add_argument('-d', type=int, default=5, help='dimension of RV')
 cmd_opt.add_argument('-threshold', type=float, default=0.1)
 cmd_opt.add_argument('-sparsity', type=float, default=1.0, help='l1 penalty coefficient in the projection')
+cmd_opt.add_argument('-learn_noise', type=eval, default=False, help='If true, then noise distribution needs to be learned. Otherwise, it is assumed to be given.')
 
 # hyperparameters for training
 cmd_opt.add_argument('-num_dag', type=int, default=50, help='number of DAGs')

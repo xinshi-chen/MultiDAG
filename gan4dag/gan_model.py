@@ -8,14 +8,24 @@ from torch.nn.parameter import Parameter
 
 class GenNet(nn.Module):
 
-    def __init__(self, d):
+    def __init__(self, d, noise_mean=None, noise_sd=None):
         super(GenNet, self).__init__()
         self.d = d
         self.W = Parameter(torch.empty(size=[d, d]))
-        self.noise_mean = Parameter(torch.empty(size=[d]))
+
+        if noise_mean is None:
+            self.noise_mean = Parameter(torch.zeros(size=[d]))
+        else:
+            self.noise_mean = torch.tensor(noise_mean).to(DEVICE)
+
         weights_init(self)
+
         self.V = Parameter(torch.ones(size=[d, d]))
-        self.noise_sd = Parameter(torch.ones(size=[d]))
+
+        if noise_sd is None:
+            self.noise_sd = Parameter(torch.ones(size=[d]))
+        else:
+            self.noise_sd = torch.tensor(noise_sd).to(DEVICE)
 
     def forward(self, Z):
         """

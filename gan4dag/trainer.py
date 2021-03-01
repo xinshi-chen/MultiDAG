@@ -157,7 +157,11 @@ if __name__ == '__main__':
     from gan4dag.gan_model import GenNet, DiscNet
 
     print('*** Initializing networks ***')
-    gen_net = GenNet(d=d).to(DEVICE)
+    if cmd_args.learn_noise:
+        noise_mean, noise_sd = None, None
+    gen_net = GenNet(d=d,
+                     noise_mean=noise_mean,
+                     noise_sd=noise_sd).to(DEVICE)
     disc_net = DiscNet(d=d,
                        f_hidden_dims=cmd_args.f_hidden_dim,
                        f_nonlinearity=cmd_args.f_act,
