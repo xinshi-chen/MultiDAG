@@ -1,6 +1,7 @@
 import torch
 from tqdm import tqdm
 from gan4dag.common.consts import DEVICE
+import os
 
 D_Loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
 
