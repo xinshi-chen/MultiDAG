@@ -37,11 +37,11 @@ class GenNet(nn.Module):
 
         return W
 
-    def gen_one_X(self, n):
+    def gen_one_dag(self, diff=True):
+        num_passed_z = 0
 
         # (1) Generate z -> W; and compute projection matrix P.
         # Do not differentiate through this part.
-        num_passed_z = 0
         with torch.no_grad():
             while 1:
                 z = torch.normal(0, 1, size=(self.d, self.d)).float().to(DEVICE)
@@ -53,22 +53,41 @@ class GenNet(nn.Module):
                 else:
                     num_passed_z += 1
 
+        if not diff:
+            return w, P, num_passed_z
+
         # (2) z -> W; W -> W * P
         # This part is differentiable
         W = self.forward(z.detach())
         W = W * P  # make it a DAG
         # TODO: should have one more layer to adjust the weight, in case the sparsity/threshold is not correct
+        return W, P, num_passed_z
+
+    def gen_batch_dag(self, m, diff=True):
+        num_passed_z = 0
+
+        W = torch.zeros(size=[m, self.d, self.d]).to(DEVICE)
+        P = torch.zeros(size=[m, self.d, self.d]).to(DEVICE)
+        for i in range(m):
+            W[i], P[i], k = self.gen_one_dag(diff)
+            num_passed_z += k
+        return W, P, num_passed_z
+
+    def gen_one_X(self, n, diff=True):
+
+        # generate a DAG
+        W, P, num_passed_z = self.gen_one_dag(diff)
 
         # samples
         X = sampler(W, n, self.noise_mean, self.noise_sd, noise_type='gauss')
         return X, num_passed_z
 
-    def gen_batch_X(self, batch_size, n):
+    def gen_batch_X(self, batch_size, n, diff=True):
         num_passed_z = 0
         X = torch.zeros(size=[batch_size, n, self.d]).to(DEVICE)
         # TODO: speed up?
         for i in range(batch_size):
-            X[i], k = self.gen_one_X(n)
+            X[i], k = self.gen_one_X(n, diff)
             num_passed_z += k
         return X, num_passed_z
 

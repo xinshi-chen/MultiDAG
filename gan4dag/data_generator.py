@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 from gan4dag.dag_utils import sampler, is_dag, project_to_dag
+import os
+import pickle as pkl
 
 
 class LsemDataset(object):
@@ -8,36 +10,50 @@ class LsemDataset(object):
     synthetic dataset
     Linear SEM
     """
-    def __init__(self, W_mean, W_sd, W_sparsity, W_threshold, noise_mean, noise_sd, num_dags, num_sample):
+    def __init__(self, d, W_sparsity, W_threshold, num_dags, num_sample):
         """
-        :param W_mean: mean of W_ij
-        :param W_sd: sd of W_ij
-        :param noise_mean: Z ~ N(noise_mean, noise_sd)
-        :param noise_sd: Z ~ N(noise_mean, noise_sd)
+        :param d: dimension of random variable
+        :param W_sparsity, W_threshold: hyperparameters for generating W
         :param num_dags: number of DAGs for training (not observed)
         :param num_sample: number of samples observed from each training DAG
         """
 
         self.d = W_mean.shape[0]
-
-        # Distribution Of Noise
-        self.noise_mean = noise_mean
-        self.noise_sd = noise_sd
-
-        # Meta Distribution of W
-        self.W_mean = W_mean
-        self.W_sd = W_sd
         self.W_sparsity = W_sparsity
         self.W_threshold = W_threshold
 
-        # Generate static data for training
+        hp = 'LSEM-d-%d' % self.d
+
+        # ---------------------
+        #  Load Meta Distribution
+        # ---------------------
+
+        data_dir = '../data'
+        self.data_pkl = data_dir + '/' + hp + '-meta.pkl'
+
+        if os.path.isfile(self.data_pkl):
+            with open(self.data_pkl, 'rb') as f:
+                self.W_mean, self.W_sd, self.noise_mean, self.noise_sd = pkl.load(f)
+        else:
+            # Meta Distribution of W
+            self.W_mean = np.random.normal(size=[d, d]).astype(np.float32) * 3
+            self.W_sd = np.random.rand(d, d).astype(np.float32)
+            # Distribution Of Noise
+            self.noise_mean = np.zeros(d, dtype=np.float32)
+            self.noise_sd = np.ones(d, dtype=np.float32)
+            with open(self.data_pkl, 'wb') as f:
+                pkl.dump([self.W_mean, self.W_sd, self.noise_mean, self.noise_sd], f)
+
+        # ---------------------
+        #  Static Data For Training
+        # ---------------------
         self.num_sample = num_sample
         self.num_dags = num_dags
-
         self.train_data = dict()
         self.train_data['dag'] = self.gen_dags(num_dags)
         self.train_data['data'] = self.gen_batch_sample(W=self.train_data['dag'],
                                                         n=self.num_sample)
+        self.static = dict()
 
     def gen_dags(self, m):
         """
@@ -51,8 +67,8 @@ class LsemDataset(object):
         # project to DAGs sequentially
         for i in range(m):
             while True:
-                w_dag, _ = project_to_dag(W[i], sparsity=self.W_sparsity, w_threshold=self.W_threshold,
-                                          max_iter=10, h_tol=1e-3, rho_max=1e+16)
+                w_dag, _ = project_to_dag(W[i], sparsity=self.W_sparsity, w_threshold=self.W_threshold, max_iter=10,
+                                          h_tol=1e-3, rho_max=1e+16)
                 if w_dag is None:
                     # resample W
                     W[i] = np.random.normal(size=(self.d, self.d)).astype(np.float32)
