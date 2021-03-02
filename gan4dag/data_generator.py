@@ -53,9 +53,28 @@ class LsemDataset(object):
         self.num_sample = num_sample
         self.num_dags = num_dags
         self.train_data = dict()
-        self.train_data['dag'] = self.gen_dags(num_dags)
-        self.train_data['data'] = self.gen_batch_sample(W=self.train_data['dag'],
-                                                        n=self.num_sample)
+
+        # generate DAGs
+        data_pkl = self.data_dir + '/' + self.hp + '-train-dag-%d.pkl' % num_dags
+        if os.path.isfile(data_pkl):
+            with open(data_pkl, 'rb') as f:
+                self.train_data['dag'] = pkl.load(f)
+        else:
+            self.train_data['dag'] = self.gen_dags(num_dags)
+            with open(data_pkl, 'wb') as f:
+                pkl.dump(self.train_data['dag'], f)
+
+        # generate observed data
+        data_pkl = self.data_dir + '/' + self.hp + '-train-data-%d-%d.pkl' % (num_dags, num_sample)
+        if os.path.isfile(data_pkl):
+            with open(data_pkl, 'rb') as f:
+                self.train_data['data'] = pkl.load(f)
+        else:
+            self.train_data['data'] = self.gen_batch_sample(W=self.train_data['dag'],
+                                                            n=self.num_sample)
+            with open(data_pkl, 'wb') as f:
+                pkl.dump(self.train_data['data'], f)
+
         self.static = dict()
 
     def gen_dags(self, m):
@@ -63,31 +82,24 @@ class LsemDataset(object):
         :param m: number of DAGs
         :return: DAGs represented by matrix W
         """
-        data_pkl = self.data_dir + '/' + self.hp + '-train-dag-%d.pkl' % m
-        if os.path.isfile(data_pkl):
-            with open(data_pkl, 'rb') as f:
-                W = pkl.load(f)
-        else:
-            W = np.random.normal(size=(m, self.d, self.d)).astype(np.float32)
-            W = W * self.W_sd
-            W = W + self.W_mean
+        W = np.random.normal(size=(m, self.d, self.d)).astype(np.float32)
+        W = W * self.W_sd
+        W = W + self.W_mean
 
-            # project to DAGs sequentially
-            progress_bar = tqdm(range(m))
-            for i in progress_bar:
-                while True:
-                    w_dag, _ = project_to_dag(W[i], sparsity=self.W_sparsity, w_threshold=self.W_threshold, max_iter=10,
-                                              h_tol=1e-3, rho_max=1e+16)
-                    if w_dag is None:
-                        # resample W
-                        W[i] = np.random.normal(size=(self.d, self.d)).astype(np.float32)
-                        W[i] = W[i] * self.W_sd
-                        W[i] = W[i] + self.W_mean
-                    else:
-                        W[i] = w_dag
-                        break
-            with open(data_pkl, 'wb') as f:
-                pkl.dump(W, f)
+        # project to DAGs sequentially
+        progress_bar = tqdm(range(m))
+        for i in progress_bar:
+            while True:
+                w_dag, _ = project_to_dag(W[i], sparsity=self.W_sparsity, w_threshold=self.W_threshold, max_iter=10,
+                                          h_tol=1e-3, rho_max=1e+16)
+                if w_dag is None:
+                    # resample W
+                    W[i] = np.random.normal(size=(self.d, self.d)).astype(np.float32)
+                    W[i] = W[i] * self.W_sd
+                    W[i] = W[i] + self.W_mean
+                else:
+                    W[i] = w_dag
+                    break
         return W
 
     def gen_batch_sample(self, W, n):

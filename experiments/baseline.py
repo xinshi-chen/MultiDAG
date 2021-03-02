@@ -10,6 +10,7 @@ import random
 import numpy as np
 from gan4dag.gan_model import GenNet, DiscNet
 import torch
+from tqdm import tqdm
 
 
 if __name__ == '__main__':
@@ -48,10 +49,11 @@ if __name__ == '__main__':
 
     X = db.train_data['data']
     W_est = np.zeros([num_dag, d, d])
-    for i in range(num_dag):
+    progress_bar = tqdm(range(num_dag))
+    for i in progress_bar:
         W_est[i] = notears_linear(X, lambda1=0.1, loss_type='l2')
         assert is_dag(W_est[i])
 
     # ---------------------
-    #  Observations -> DAGs (notears)
+    #  DAGs -> generative model
     # ---------------------
