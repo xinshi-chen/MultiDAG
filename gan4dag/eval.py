@@ -27,7 +27,7 @@ class Eval:
                 g_net.eval()
             else:
                 print('Finished. File not exist: %s' % dump)
-                filename = self.save_dir + self.model_dump[:-5] + '.result'
+                filename = self.save_dir + '/' + self.model_dump[:-5] + '.result'
                 with open(filename, 'wb') as f:
                     pkl.dump(result, f)
                 return result

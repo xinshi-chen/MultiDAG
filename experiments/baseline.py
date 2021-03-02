@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     print('*** Loading data ***')
     db = LsemDataset(d, sparsity, threshold, num_dag, num_sample)
-
+    print('*** Data loaded ***')
     # ---------------------
     #  Observations -> DAGs (notears)
     # ---------------------
