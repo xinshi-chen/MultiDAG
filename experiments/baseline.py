@@ -51,7 +51,7 @@ if __name__ == '__main__':
     W_est = np.zeros([num_dag, d, d])
     progress_bar = tqdm(range(num_dag))
     for i in progress_bar:
-        W_est[i] = notears_linear(X, lambda1=0.1, loss_type='l2')
+        W_est[i] = notears_linear(X[i], lambda1=0.1, loss_type='l2')
         assert is_dag(W_est[i])
 
     # ---------------------
