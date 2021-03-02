@@ -49,7 +49,7 @@ if __name__ == '__main__':
     X = db.train_data['data']
     W_est = np.zeros([num_dag, d, d])
     for i in range(num_dag):
-        W_est[i] = notears_linear(X, lambda1=0.1, loss_type='l2')
+        W_est[i] = notears_linear(X[i], lambda1=0.1, loss_type='l2')
         assert is_dag(W_est[i])
 
     # ---------------------
