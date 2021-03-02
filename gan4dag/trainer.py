@@ -16,8 +16,13 @@ class LsemTrainer:
         self.train_itr = 0
         self.save_itr = save_itr
         self.num_sample_gen = num_sample_gen
-        self.save_dir = save_dir
+
         self.model_dump = model_dump
+
+        data_hp = 'LSEM-d-%d-ts-%.2f-sp-%.2f' % (self.db.d, self.db.W_threshold, self.db.W_sparsity)
+        self.save_dir = save_dir + '/' + data_hp
+        if not os.path.isdir(self.save_dir):
+            os.makedirs(self.save_dir)
 
     def _train_epoch(self, epoch, tot_epoch, batch_size, progress_bar, dsc):
         self.g_net.train()
@@ -93,11 +98,7 @@ class LsemTrainer:
         return
 
     def save(self, itr):
-        data_hp = 'LSEM-d-%d-ts-%.2f-sp-%.2f' % (self.db.d, self.db.W_threshold, self.db.W_sparsity)
-        dump = self.save_dir + '/' + data_hp 
-        if not os.path.isdir(dump):
-            os.makedirs(dump)
-        dump += '/Itr-%d' % itr + self.model_dump
+        dump = self.save_dir + '/Itr-%d' % itr + self.model_dump
         torch.save(self.g_net.state_dict(), dump)
 
     def train(self, epochs, batch_size):

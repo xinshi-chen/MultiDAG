@@ -1,6 +1,7 @@
 import torch
 from gan4dag.common.consts import DEVICE, OPTIMIZER
 from gan4dag.trainer import LsemTrainer
+from gan4dag.eval import Eval
 from gan4dag.common.cmd_args import cmd_args
 from gan4dag.data_generator import LsemDataset
 import random
@@ -61,20 +62,35 @@ if __name__ == '__main__':
                        output_hidden_dims=cmd_args.output_hidden_dim,
                        output_nonlinearity=cmd_args.output_act).to(DEVICE)
 
-    # ---------------------
-    #  Optimizer
-    # ---------------------
+    if cmd_args.phase == 'train':
+        # ---------------------
+        #  Optimizer
+        # ---------------------
 
-    g_opt = OPTIMIZER[cmd_args.g_optimizer](gen_net.parameters(),
-                                            lr=cmd_args.g_lr,
-                                            weight_decay=cmd_args.weight_decay)
-    d_opt = OPTIMIZER[cmd_args.d_optimizer](disc_net.parameters(),
-                                            lr=cmd_args.d_lr,
-                                            weight_decay=cmd_args.weight_decay)
+        g_opt = OPTIMIZER[cmd_args.g_optimizer](gen_net.parameters(),
+                                                lr=cmd_args.g_lr,
+                                                weight_decay=cmd_args.weight_decay)
+        d_opt = OPTIMIZER[cmd_args.d_optimizer](disc_net.parameters(),
+                                                lr=cmd_args.d_lr,
+                                                weight_decay=cmd_args.weight_decay)
 
-    # ---------------------
-    #  Trainer
-    # ---------------------
-    trainer = LsemTrainer(gen_net, disc_net, g_opt, d_opt, db, num_sample_gen=num_sample_gen, save_dir=cmd_args.save_dir,
-                          model_dump=model_dump, save_itr=cmd_args.save_itr)
-    trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size)
+        # ---------------------
+        #  Trainer
+        # ---------------------
+        trainer = LsemTrainer(gen_net, disc_net, g_opt, d_opt, db, num_sample_gen=num_sample_gen, save_dir=cmd_args.save_dir,
+                              model_dump=model_dump, save_itr=cmd_args.save_itr)
+        trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size)
+
+    if cmd_args.phase == 'test':
+        # ---------------------
+        #  Eval
+        # ---------------------
+        evaluator = Eval(database=db, save_dir=cmd_args.save_dir, model_dump=model_dump, save_itr=cmd_args.save_itr)
+
+        result = evaluator.eval(gen_net, m_small=128, m_large=512, verbose=True, bw=1.0)
+        print('mmd: ')
+        print(result['mmd'][1])
+        print('ce: ')
+        print(result['ce'][1])
+        print('parameter: ')
+        print(result['parameter'][1])

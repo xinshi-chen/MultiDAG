@@ -32,6 +32,9 @@ cmd_opt.add_argument('-save_itr', type=int, default=250, help='how many iteratio
 
 cmd_opt.add_argument('-num_sample_gen', type=int, default=100, help='number of observed samples for generator during training')
 
+cmd_opt.add_argument('-phase', type=str, default='train')
+
+
 # save
 cmd_opt.add_argument('-save_dir', type=str, default='./saved_models', help='save folder')
 
