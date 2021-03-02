@@ -11,6 +11,8 @@ import numpy as np
 from gan4dag.gan_model import GenNet, DiscNet
 import torch
 from tqdm import tqdm
+import os
+import pickle as pkl
 
 
 if __name__ == '__main__':
@@ -44,15 +46,24 @@ if __name__ == '__main__':
     db = LsemDataset(d, sparsity, threshold, num_dag, num_sample)
     print('*** Data loaded ***')
     # ---------------------
-    #  Observations -> DAGs (notears)
+    #  Observations -> DAGs (Run NOTEARS)
     # ---------------------
 
-    X = db.train_data['data']
-    W_est = np.zeros([num_dag, d, d])
-    progress_bar = tqdm(range(num_dag))
-    for i in progress_bar:
-        W_est[i] = notears_linear(X[i], lambda1=0.1, loss_type='l2')
-        assert is_dag(W_est[i])
+    filename = db.data_dir + '/' + db.hp + '-train-data-%d-%d-to-DAG.pkl' % (num_dag, num_sample)
+    if os.path.isfile(filename):
+        with open(filename, 'rb') as f:
+            W_est = pkl.load(f)
+    else:
+        # Run NOTEARS
+        X = db.train_data['data']
+        W_est = np.zeros([num_dag, d, d])
+        progress_bar = tqdm(range(num_dag))
+        for i in progress_bar:
+            W_est[i] = notears_linear(X[i], lambda1=0.1, loss_type='l2')
+            assert is_dag(W_est[i])
+
+        with open(filename, 'wb') as f:
+            pkl.dump(W_est, f)
 
     # ---------------------
     #  DAGs -> generative model
