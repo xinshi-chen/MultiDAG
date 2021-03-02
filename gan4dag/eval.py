@@ -13,7 +13,7 @@ class Eval:
         self.db = database
 
         data_hp = 'LSEM-d-%d-ts-%.2f-sp-%.2f' % (self.db.d, self.db.W_threshold, self.db.W_sparsity)
-        self.save_dir = save_dir + data_hp
+        self.save_dir = save_dir + '/' +  data_hp
         self.model_dump = model_dump
         self.save_itr = save_itr
 
@@ -35,8 +35,8 @@ class Eval:
             # -----------------
             #  Evaluate MMD, CE, Parameter
             # -----------------
-            result['mmd'][0].append(self.itr)
-            result['mmd'][1].append(self.mmd(g_net, m_small, verbose, bw))
+            # result['mmd'][0].append(self.itr)
+            # result['mmd'][1].append(self.mmd(g_net, m_small, verbose, bw))
 
             result['ce'][0].append(self.itr)
             result['ce'][1].append(self.ce(g_net, m_large, verbose))
