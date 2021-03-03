@@ -63,12 +63,12 @@ class GenNet(nn.Module):
         # TODO: should have one more layer to adjust the weight, in case the sparsity/threshold is not correct
         return W, P, num_passed_z
 
-    def gen_batch_dag(self, m, diff=True):
+    def gen_batch_dag(self, batch_size, diff=True):
         num_passed_z = 0
 
-        W = torch.zeros(size=[m, self.d, self.d]).to(DEVICE)
-        P = torch.zeros(size=[m, self.d, self.d]).to(DEVICE)
-        for i in range(m):
+        W = torch.zeros(size=[batch_size, self.d, self.d]).to(DEVICE)
+        P = torch.zeros(size=[batch_size, self.d, self.d]).to(DEVICE)
+        for i in range(batch_size):
             W[i], P[i], k = self.gen_one_dag(diff)
             num_passed_z += k
         return W, P, num_passed_z
