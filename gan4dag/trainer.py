@@ -51,7 +51,7 @@ class LsemTrainer:
 
             # generate fake samples [m, n, d]
             if baseline:
-                X_fake, k = self.g_net.gen_batch_dag(batch_size=m)
+                X_fake, _, k = self.g_net.gen_batch_dag(batch_size=m)
             else:
                 X_fake, k = self.g_net.gen_batch_X(batch_size=m, n=self.num_sample_gen)
             num_invalid_W += k
