@@ -21,7 +21,7 @@ class Eval:
         self.itr = self.save_itr
         result = {'mmd': [[], []], 'ce': [[], []], 'parameter': [[], []]}
         while True:
-            dump = self.save_dir + '/Itr-%d' % self.itr + self.model_dump
+            dump = self.save_dir + '/Itr-%d-' % self.itr + self.model_dump
             if os.path.isfile(dump):
                 g_net.load_state_dict(torch.load(dump))
                 g_net.eval()
