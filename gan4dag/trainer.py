@@ -97,13 +97,18 @@ class LsemTrainer:
             #  Save
             # -----------------
             self.train_itr += 1
-            if (self.train_itr % self.save_itr == 0) or ((epoch == tot_epoch-1) and (it == num_iterations-1)):
-                self.save(self.train_itr)
+            last_itr = (self.train_itr == tot_epoch * num_iterations)
+            if (self.train_itr % self.save_itr == 0) or last_itr:
+                self.save(self.train_itr, last_itr)
         return
 
-    def save(self, itr):
-        dump = self.save_dir + '/Itr-%d' % itr + self.model_dump
+    def save(self, itr, last_itr=False):
+        dump = self.save_dir + '/Itr-%d-' % itr + self.model_dump
         torch.save(self.g_net.state_dict(), dump)
+
+        if last_itr:
+            dump = self.save_dir + '/Itr-%d-' % itr + self.model_dump[:-5] + '_disc.dump'
+            torch.save(self.d_net.state_dict(), dump)
 
     def train(self, epochs, batch_size, baseline=False):
         """

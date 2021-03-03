@@ -61,9 +61,8 @@ if __name__ == '__main__':
         output_act = cmd_args.output_act
         model_dump = ''
     hp_arch = 'f-%s-%s-out-%s-%s' % (hidden_dim, act, output_hidden_dim, output_act)
-    hp_train = 'm-%d-n-%d-gen-%d-ep-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample,
-                                                                   num_sample_gen, cmd_args.num_epochs,
-                                                                   cmd_args.batch_size, cmd_args.g_lr, cmd_args.d_lr)
+    hp_train = 'm-%d-n-%d-gen-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, num_sample_gen,
+                                                             cmd_args.batch_size, cmd_args.g_lr, cmd_args.d_lr)
     model_dump += hp_arch + '-' + hp_train + '.dump'
 
     if cmd_args.learn_noise:
