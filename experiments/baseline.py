@@ -59,7 +59,7 @@ if __name__ == '__main__':
         with open(filename, 'wb') as f:
             pkl.dump(W_est, f)
 
-    db.static['to-dag'] = W_est
+    db.static['to-dag'] = W_est.astype(np.float32)
 
     # ---------------------
     #  DAGs -> generative model
