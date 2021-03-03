@@ -4,6 +4,25 @@ import numpy as np
 import networkx as nx
 from gan4dag.common.consts import DEVICE
 import torch
+from notears.linear import notears_linear
+from tqdm import tqdm
+
+
+def run_notears_linear(X):
+    """
+    :param X: [m, n, d]
+    :param d:
+    :return: W_est: [m, d, d]
+    """
+    assert len(X.shape) == 3
+    num_dag = X.shape[0]
+    d = X.shape[2]
+    W_est = np.zeros([num_dag, d, d])
+    progress_bar = tqdm(range(num_dag))
+    for i in progress_bar:
+        W_est[i] = notears_linear(X[i], lambda1=0.1, loss_type='l2')
+        assert is_dag(W_est[i])
+    return W_est.astype(np.float32)
 
 
 def project_to_dag(W, sparsity=1.0, max_iter=10, h_tol=1e-3, rho_max=1e+16, w_threshold=0.1):

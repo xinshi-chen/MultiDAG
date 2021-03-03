@@ -1,9 +1,10 @@
 import torch
 import numpy as np
-from gan4dag.dag_utils import sampler, is_dag, project_to_dag
+from gan4dag.dag_utils import sampler, is_dag, project_to_dag, run_notears_linear
 import os
 import pickle as pkl
 from tqdm import tqdm
+
 
 
 class LsemDataset(object):
@@ -135,6 +136,21 @@ class LsemDataset(object):
                     yield X[pos : pos + num_samples, :, :].detach().to(device)
             if not auto_reset:
                 break
+
+    def train_to_dag(self):
+
+        filename = self.data_dir + '/' + self.hp + '-train-data-%d-%d-to-DAG.pkl' % (self.num_dags, self.num_sample)
+        # load if exists
+        if os.path.isfile(filename):
+            with open(filename, 'rb') as f:
+                W_est = pkl.load(f)
+        else:
+            # Run NOTEARS
+            W_est = run_notears_linear(self.train_data['data'])
+            with open(filename, 'wb') as f:
+                pkl.dump(W_est, f)
+
+        self.static['to-dag'] = W_est
 
 
 if __name__ == '__main__':
