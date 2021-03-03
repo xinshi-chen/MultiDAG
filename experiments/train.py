@@ -53,7 +53,7 @@ if __name__ == '__main__':
         hidden_dim = '32-32'
         output_hidden_dim = '64-1'
         act = output_act = 'relu'
-        model_dump = 'baseline'
+        model_dump = '-baseline-'
     else:
         hidden_dim = cmd_args.f_hidden_dim
         output_hidden_dim = cmd_args.output_hidden_dim
@@ -109,6 +109,9 @@ if __name__ == '__main__':
         # ---------------------
         #  Eval
         # ---------------------
+        # TODO: remove later
+        if cmd_args.baseline:
+            model_dump = 'baselinef-32-32-relu-out-32-32-relu-m-512-n-10-gen-100-ep-5000-bs-64-glr-0.00010-dlr-0.00001.dump'
         evaluator = Eval(database=db, save_dir=cmd_args.save_dir, model_dump=model_dump, save_itr=cmd_args.save_itr)
 
         result = evaluator.eval(gen_net, m_small=128, m_large=2048,  verbose=True, bw=1.0)
