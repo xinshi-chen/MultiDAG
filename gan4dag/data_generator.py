@@ -110,13 +110,17 @@ class LsemDataset(object):
             X[i, :, :] = sampler(W[i], n, self.noise_mean, self.noise_sd, noise_type='gauss')
         return X
 
-    def load_data(self, batch_size, auto_reset=False, shuffle=True, device=None):
+    def load_data(self, batch_size, auto_reset=False, shuffle=True, device=None, baseline=False):
 
-        X = torch.tensor(self.train_data['data'])
+        if baseline:
+            X = torch.tensor(self.static['to-dag'])
+        else:
+            X = torch.tensor(self.train_data['data'])
+
         while True:
             if shuffle:
                 perms = torch.randperm(self.num_dags)
-                X = X[perms, :]
+                X = X[perms, :, :]
             for pos in range(0, self.num_dags, batch_size):
                 if pos + batch_size > self.num_dags:  # the last mini-batch has fewer samples
                     if auto_reset:  # no need to use this last mini-batch

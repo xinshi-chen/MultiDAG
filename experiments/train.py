@@ -34,7 +34,7 @@ if __name__ == '__main__':
     hp_train = 'm-%d-n-%d-gen-%d-ep-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample,
                                                                    num_sample_gen, cmd_args.num_epochs,
                                                                    cmd_args.batch_size, cmd_args.g_lr, cmd_args.d_lr)
-    model_dump = hp_arch + '-' + hp_train + '.dump'
+    model_dump = 'baseline' + hp_arch + '-' + hp_train + '.dump'
 
     # ---------------------
     #  Synthetic Dataset

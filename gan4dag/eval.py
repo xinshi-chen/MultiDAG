@@ -13,7 +13,7 @@ class Eval:
         self.db = database
 
         data_hp = 'LSEM-d-%d-ts-%.2f-sp-%.2f' % (self.db.d, self.db.W_threshold, self.db.W_sparsity)
-        self.save_dir = save_dir + '/' +  data_hp
+        self.save_dir = save_dir + '/' + data_hp
         self.model_dump = model_dump
         self.save_itr = save_itr
 

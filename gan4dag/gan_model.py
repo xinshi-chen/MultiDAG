@@ -134,6 +134,97 @@ class DiscNet(nn.Module):
         return score.view(-1)
 
 
+# for baseline
+class DiscGIN(nn.Module):
+    """
+    Follow the architecture of GIN
+    """
+    def __init__(self, d,
+                 node_f_dim=32,
+                 hidden_dims='32-32',
+                 nonlinearity='relu',
+                 output_hidden_dims='64-1',
+                 output_nonlinearity='relu',
+                 hops=3):
+        """
+
+        :param d:
+        :param node_f_dim: node feature dimension
+        :param f_hidden_dims:
+        :param f_nonlinearity:
+        :param output_hidden_dims:
+        :param output_nonlinearity:
+        """
+        super(DiscGIN, self).__init__()
+
+        self.d = d
+        self.node_f_dim = node_f_dim
+        self.hops = hops
+
+        self.init_features = Parameter(torch.empty(size=[d, node_f_dim]))
+
+        # make sure the output dim of MLP is node_f_dim
+        hidden_dims_list = tuple(map(int, hidden_dims.split("-")))
+        if hidden_dims_list[-1] != node_f_dim:
+            hidden_dims += '-' + str(node_f_dim)
+
+        # MLP for transform messages
+        mlp_list = []
+        for i in range(hops):
+            mlp_list.append(MLP(input_dim=node_f_dim,
+                                hidden_dims=hidden_dims,
+                                nonlinearity=nonlinearity,
+                                act_last=nonlinearity))
+        self.mlp = nn.ModuleList(mlp_list)
+
+        # Output layer
+        input_dim = hops * node_f_dim
+        # make sure the output dim of MLP is 1
+        hidden_dims_list = tuple(map(int, output_hidden_dims.split("-")))
+        if hidden_dims_list[-1] != 1:
+            hidden_dims += '-1'
+
+        self.output_layer = MLP(input_dim=input_dim,
+                                hidden_dims=output_hidden_dims,
+                                nonlinearity=output_nonlinearity,
+                                act_last=None).to(DEVICE)
+
+        weights_init(self)
+        self.epsilon = Parameter(torch.ones(size=[hops]) * 0.5)
+
+    def forward(self, W):
+        """
+
+        :param W: [m, d, d] tensor. m is batch size. d is variable dimension.
+        :return: scores of dimension [m]
+        """
+        m = W.shape[0]
+        node_features = torch.zeros(size=[m, self.d, self.node_f_dim]).to(DEVICE)  # [m, d, node_f_dim]
+        readout = torch.zeros(size=[self.hops, m, self.node_f_dim]).to(DEVICE)  # [m, hops, node_f_dim]
+        for i in range(self.hops):
+
+            # -----------------
+            #  Aggregate features
+            # -----------------
+            if i == 0:
+                pa_message = torch.matmul(W.transpose(-1, -2), self.init_features)  # [m, d, node_f_dim]
+                combined_features = pa_message + self.init_features * (1 + self.epsilon[i])  # [m, d, node_f_dim]
+            else:
+                pa_message = torch.einsum('bij,bjk->bik', W.transpose(-1, -2), node_features)  # batch matmul
+                combined_features = pa_message + node_features * (1 + self.epsilon[i])
+
+            # -----------------
+            #  Transform
+            # -----------------
+            node_features = self.mlp[i](combined_features)  # [m, d, node_f_dim]
+            readout[i] = torch.sum(node_features, dim=1)  # [m, node_f_dim]
+
+        readout = readout.transpose(1, 0).reshape(m, self.hops * self.node_f_dim)  # [m, hops * node_f_dim]
+        score = self.output_layer(readout)  # [m, 1]
+
+        return score.view(-1)
+
+
 if __name__ == '__main__':
     d = 5
     gen = GenNet(d).to(DEVICE)
