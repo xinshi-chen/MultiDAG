@@ -111,3 +111,17 @@ if __name__ == '__main__':
         trainer = LsemTrainer(gen_net, disc_net, g_opt, d_opt, db, num_sample_gen=num_sample_gen, save_dir=cmd_args.save_dir,
                               model_dump=model_dump, save_itr=cmd_args.save_itr)
         trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size, baseline=True)
+
+    if cmd_args.phase == 'test':
+        # ---------------------
+        #  Eval
+        # ---------------------
+        evaluator = Eval(database=db, save_dir=cmd_args.save_dir, model_dump=model_dump, save_itr=cmd_args.save_itr)
+
+        result = evaluator.eval(gen_net, m_small=128, m_large=2048,  verbose=True, bw=1.0)
+        # print('mmd: ')
+        # print(result['mmd'][1])
+        print('ce: ')
+        print(result['ce'][1])
+        print('parameter: ')
+        print(result['parameter'][1])
