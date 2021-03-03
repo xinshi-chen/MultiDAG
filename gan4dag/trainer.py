@@ -104,7 +104,10 @@ class LsemTrainer:
 
     def save(self, itr, last_itr=False, baseline=False):
         if baseline:
-            dump = self.save_dir + '/baseline-Itr-%d-' % itr + self.model_dump
+            save_dir = self.save_dir + '/baseline'
+            if not os.path.isdir(save_dir):
+                os.makedirs(save_dir)
+            dump = save_dir + '/Itr-%d-' % itr + self.model_dump
         else:
             dump = self.save_dir + '/Itr-%d-' % itr + self.model_dump
         torch.save(self.g_net.state_dict(), dump)

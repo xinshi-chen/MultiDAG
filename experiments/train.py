@@ -53,17 +53,15 @@ if __name__ == '__main__':
         hidden_dim = '32-32'
         output_hidden_dim = '64-1'
         act = output_act = 'relu'
-        model_dump = '-baseline-'
     else:
         hidden_dim = cmd_args.f_hidden_dim
         output_hidden_dim = cmd_args.output_hidden_dim
         act = cmd_args.f_act
         output_act = cmd_args.output_act
-        model_dump = ''
     hp_arch = 'f-%s-%s-out-%s-%s' % (hidden_dim, act, output_hidden_dim, output_act)
     hp_train = 'm-%d-n-%d-gen-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, num_sample_gen,
                                                              cmd_args.batch_size, cmd_args.g_lr, cmd_args.d_lr)
-    model_dump += hp_arch + '-' + hp_train + '.dump'
+    model_dump = hp_arch + '-' + hp_train + '.dump'
 
     if cmd_args.learn_noise:
         noise_mean, noise_sd = None, None
@@ -109,9 +107,6 @@ if __name__ == '__main__':
         # ---------------------
         #  Eval
         # ---------------------
-        # TODO: remove later
-        if cmd_args.baseline:
-            model_dump = 'baselinef-32-32-relu-out-64-1-relu-m-512-n-10-gen-100-ep-5000-bs-64-glr-0.00010-dlr-0.00001.dump'
         evaluator = Eval(database=db, save_dir=cmd_args.save_dir, model_dump=model_dump, save_itr=cmd_args.save_itr)
 
         result = evaluator.eval(gen_net, m_small=128, m_large=2048,  verbose=True, bw=1.0)
