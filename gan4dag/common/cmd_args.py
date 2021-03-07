@@ -21,7 +21,7 @@ cmd_opt.add_argument('-learn_noise', type=eval, default=False, help='If true, th
 # hyperparameters for training
 cmd_opt.add_argument('-num_dag', type=int, default=2048, help='number of DAGs')
 cmd_opt.add_argument('-num_sample', type=int, default=10, help='number of observed samples')
-cmd_opt.add_argument('-batch_size', type=int, default=128, help='batch size')
+cmd_opt.add_argument('-batch_size', type=int, default=64, help='batch size')
 cmd_opt.add_argument('-g_lr', type=float, default=1e-4, help='learning rate of generator')
 cmd_opt.add_argument('-d_lr', type=float, default=1e-5, help='learning rate of discriminator')
 cmd_opt.add_argument('-weight_decay', type=float, default=1e-5)
