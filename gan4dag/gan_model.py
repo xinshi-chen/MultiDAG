@@ -8,7 +8,7 @@ from torch.nn.parameter import Parameter
 
 class GenNet(nn.Module):
 
-    def __init__(self, d, noise_mean=None, noise_sd=None):
+    def __init__(self, d, noise_mean=None, noise_sd=None, W_sd=None):
         super(GenNet, self).__init__()
         self.d = d
         self.W = Parameter(torch.empty(size=[d, d]))
@@ -20,7 +20,10 @@ class GenNet(nn.Module):
 
         weights_init(self)
 
-        self.V = Parameter(torch.ones(size=[d, d]))
+        if W_sd is None:
+            self.V = Parameter(torch.ones(size=[d, d]))
+        else:
+            self.V = torch.tensor(W_sd).to(DEVICE)
 
         if noise_sd is None:
             self.noise_sd = Parameter(torch.ones(size=[d]))

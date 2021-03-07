@@ -25,7 +25,7 @@ def run_notears_linear(X):
     return W_est.astype(np.float32)
 
 
-def project_to_dag(W, sparsity=1.0, max_iter=10, h_tol=1e-3, rho_max=1e+16, w_threshold=0.1):
+def project_to_dag(W, sparsity=1.0, max_iter=20, h_tol=1e-3, rho_max=1e+16, w_threshold=0.1):
     """
     :param W: (np.ndarray) [d, d] matrix as a general directed graph, not necessarily acyclic
     :return:
@@ -33,10 +33,16 @@ def project_to_dag(W, sparsity=1.0, max_iter=10, h_tol=1e-3, rho_max=1e+16, w_th
         return None if it takes to long to project to DAGs
     """
     for _ in range(5):  # run at most 5 times
-        W, P = project_notears(W, sparsity, max_iter, h_tol, rho_max, w_threshold)
+
+        try:
+            W, P = project_notears(W, sparsity, max_iter, h_tol, rho_max, w_threshold)
+        except ValueError:
+            # in case of some numerical instability error
+            return None, None
+
         if is_dag(P):
             return W, P
-    # raise Exception("Run too long for DAG projection.")
+
     return None, None
 
 

@@ -12,7 +12,7 @@ class LsemDataset(object):
     synthetic dataset
     Linear SEM
     """
-    def __init__(self, d, W_sparsity, W_threshold, num_dags, num_sample):
+    def __init__(self, d, W_sparsity, W_threshold, num_dags, num_sample, verbose=True):
         """
         :param d: dimension of random variable
         :param W_sparsity, W_threshold: hyperparameters for generating W
@@ -47,6 +47,12 @@ class LsemDataset(object):
             self.noise_sd = np.ones(d, dtype=np.float32)
             with open(self.data_pkl, 'wb') as f:
                 pkl.dump([self.W_mean, self.W_sd, self.noise_mean, self.noise_sd], f)
+
+        if verbose:
+            print('*** Mean of Meta Distribution ***')
+            print(self.W_mean)
+            print('*** SD of Meta Distribution ***')
+            print(self.W_sd)
 
         # ---------------------
         #  Static Data For Training

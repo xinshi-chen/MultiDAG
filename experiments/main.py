@@ -53,14 +53,17 @@ if __name__ == '__main__':
         hidden_dim = '32-32'
         output_hidden_dim = '64-1'
         act = output_act = 'relu'
+        hp_train = 'm-%d-n-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, cmd_args.batch_size,
+                                                          cmd_args.g_lr, cmd_args.d_lr)
     else:
         hidden_dim = cmd_args.f_hidden_dim
         output_hidden_dim = cmd_args.output_hidden_dim
         act = cmd_args.f_act
         output_act = cmd_args.output_act
+        hp_train = 'm-%d-n-%d-gen-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, num_sample_gen,
+                                                                 cmd_args.batch_size, cmd_args.g_lr, cmd_args.d_lr)
     hp_arch = 'f-%s-%s-out-%s-%s' % (hidden_dim, act, output_hidden_dim, output_act)
-    hp_train = 'm-%d-n-%d-gen-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, num_sample_gen,
-                                                             cmd_args.batch_size, cmd_args.g_lr, cmd_args.d_lr)
+
     model_dump = hp_arch + '-' + hp_train + '.dump'
 
     if cmd_args.learn_noise:
@@ -68,9 +71,16 @@ if __name__ == '__main__':
     else:
         noise_mean, noise_sd = db.noise_mean, db.noise_sd
 
+    if cmd_args.learn_sd:
+        W_sd = None
+    else:
+        W_sd = db.W_sd
+
     gen_net = GenNet(d=d,
                      noise_mean=noise_mean,
-                     noise_sd=noise_sd).to(DEVICE)
+                     noise_sd=noise_sd,
+                     W_sd=W_sd).to(DEVICE)
+
     if cmd_args.baseline:
         disc_net = DiscGIN(d=d,
                            hidden_dims=hidden_dim,
@@ -115,4 +125,4 @@ if __name__ == '__main__':
         print('ce: ')
         print(result['ce'][1])
         print('parameter: ')
-        print(result['parameter'][1])
+        print([x[0] for x in result['parameter'][1]])
