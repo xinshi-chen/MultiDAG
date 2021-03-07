@@ -143,6 +143,121 @@ def get_gamma(X, bandwidth):
         return gamma
 
 
+def get_gamma_batch(X, bandwidth):
+
+    with torch.no_grad():
+        # X [m, n, d]
+        m, n = X.shape[0], X.shape[1]
+        x_norm = torch.sum(X ** 2, dim=2, keepdim=True)  # [m, n, 1]
+        x_t = torch.transpose(X, 1, 2)  # [m, d, n]
+        x_norm_t = torch.transpose(x_norm, 1, 2)   # [m, 1, n]
+        t = x_norm + x_norm_t - 2.0 * torch.einsum('bij,bjk->bik', X, x_t)   # [m, n, n]
+        dist2 = F.relu(Variable(t)).detach()
+        dist2 = dist2.view(m, n*n)
+        median_dist2, _ = torch.median(dist2, dim=-1)
+        gamma = 0.5 / median_dist2 / bandwidth
+        return gamma
+
+
+def MMD_batch(x, y, bandwidth=1.0):
+    # y [m, n, d]
+    # x [m2, n2, d]
+
+    # return mmd [m2, m]
+
+    m2, n2 = x.shape[0], x.shape[1]
+    m, n = y.shape[0], y.shape[1]
+
+    y = y.detach()
+
+    gamma = get_gamma_batch(y, bandwidth).detach()  # [m]
+    kxx = kxx_batch(x, gamma)   # [m2, n2, n2]
+    kxx = torch.sum(kxx.view(m2, -1), dim=-1) / n2 / (n2 - 1)  # [m2]
+
+    kyy = kxx_batch(y, gamma)   # [m, n, n]
+    kyy = (torch.sum(kyy.view(m, -1), dim=-1) / n / (n - 1)).detach()  # [m]
+
+    kxy = kxy_batch(x, y, gamma)  # [m, m2, n, n2]
+    kxy = torch.sum(kxy.view(m, m2, -1), dim=-1) / n / n2  # [m, m2]
+
+    mmd = kxx.view(m2, 1) + kyy.view(1, m).detach() - 2 * kxy.transpose(0, 1)
+    return mmd
+
+
+def kxx_batch(x, gamma):
+    """
+    x [m, n, d]
+    gamma [m]
+    :return [m, n, n]
+    """
+    m = x.shape[0]
+    n = x.shape[1]
+    d = pairwise_distances_batch(x, x)  # [m, n, n]
+    d = d * (-gamma).view(m, 1, 1).repeat(1, n, 1)  # [m, n, n]
+    k = torch.exp(d)
+
+    # make diagonal zero
+    k = k * (1 - torch.eye(n).to(DEVICE).view(1, n, n).repeat(m, 1, 1))
+
+    return k
+
+
+def kxy_batch(x, y, gamma):
+    """
+    x [m2, n2, d]
+    y [m, n, d]
+    gamma [m]
+    :return [m, n, n]
+    """
+    m, n = y.shape[0], y.shape[1]
+    assert m == gamma.shape[0]
+
+    m2, n2 = x.shape[0], x.shape[1]
+    d = pairwise_distances_batch(y, x)  # [m, m2, n, n2]
+    d = d * (-gamma).view(m, 1, 1, 1).repeat(1, m2, n, 1)  # [m, m2, n, n2]
+    k = torch.exp(d)
+    return k
+
+
+def pairwise_distances_batch(x, y=None):
+    '''
+    Input: x is a [m, n, d] matrix
+           y is an optional [m2, n2, d] matrix
+    Output: dist is a NxM matrix where dist[i,j] is the square norm between x[i,:] and y[j,:]
+            if y is not given then use 'y=x'.
+    i.e. dist[i,j] = ||x[i,:]-y[j,:]||^2
+    '''
+    m = x.shape[0]
+    x_norm = (x**2).sum(2).reshape(m, -1, 1)  # [m, n, 1]
+    if y is None:
+        x_norm_t = torch.transpose(x_norm, 1, 2)  # [m, 1, n]
+        x_t = torch.transpose(x, 1, 2)  # [m, d, n]
+        dist = x_norm + x_norm_t - 2.0 * torch.einsum('bij,bjk->bik', x, x_t)
+    else:
+        m2 = y.shape[0]
+        y_norm = (y**2).sum(2)  # [m2, n2]
+        x_y_norm_sum = element_sum_batch(x_norm.view(m, -1), y_norm)  # [m, m2, n, n2]
+        dist = x_y_norm_sum - 2.0 * torch.einsum('mnd,bkd->mbnk', x, y)  # [m, m2, n, n2]
+
+    return torch.clamp(dist, 0.0, np.inf)
+
+
+def element_sum_batch(x, y):
+    '''
+    :param x: [m, n]
+    :param y: [m2, n2]
+    :return: [m, m2, n, n2]
+    '''
+    m, n = x.shape
+    m2, n2 = y.shape
+    element_wise_sum = x.view(-1, 1) + y.view(1, -1)  # [m * n, m2 * n2]
+    element_wise_sum = element_wise_sum.view(m, n, m2 * n2)
+    element_wise_sum = element_wise_sum.view(m, n, m2, n2)
+    element_wise_sum = element_wise_sum.transpose(1, 2)  # [m, m2, n, n2]
+
+    return element_wise_sum
+
+
 def get_kernel_mat(x, landmarks, gamma):
     """
     Reference: https://github.com/xinshi-chen/ParticleFlowBayesRule/blob/master/pfbayes/common/distributions.py#L68
