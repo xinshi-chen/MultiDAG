@@ -99,10 +99,10 @@ class LsemTrainer:
             self.train_itr += 1
             last_itr = (self.train_itr == tot_epoch * num_iterations)
             if (self.train_itr % self.save_itr == 0) or last_itr:
-                self.save(self.train_itr, last_itr, baseline)
+                self.save(self.train_itr, baseline)
         return
 
-    def save(self, itr, last_itr=False, baseline=False):
+    def save(self, itr,  baseline=False):
         if baseline:
             save_dir = self.save_dir + '/baseline'
             if not os.path.isdir(save_dir):
@@ -111,16 +111,32 @@ class LsemTrainer:
         else:
             dump = self.save_dir + '/Itr-%d-' % itr + self.model_dump
         torch.save(self.g_net.state_dict(), dump)
+        dump = dump[:-5] + '_disc.dump'
+        torch.save(self.d_net.state_dict(), dump)
 
-        if last_itr:
-            dump = dump[:-5] + '_disc.dump'
-            torch.save(self.d_net.state_dict(), dump)
+    def load(self, itr, baseline=False):
+        if baseline:
+            save_dir = self.save_dir + '/baseline'
+            dump = save_dir + '/Itr-%d-' % itr + self.model_dump
+        else:
+            dump = self.save_dir + '/Itr-%d-' % itr + self.model_dump
 
-    def train(self, epochs, batch_size, baseline=False):
+        self.g_net.load_state_dict(torch.load(dump))
+        dump = dump[:-5] + '_disc.dump'
+        self.d_net.load_state_dict(torch.load(dump))
+
+    def train(self, epochs, batch_size, baseline=False, start_epoch=0):
         """
         training logic
         """
-        progress_bar = tqdm(range(epochs))
+
+        if start_epoch > 0:
+            completed_epochs = start_epoch
+            num_itr_per_epoch = len(range(0, self.db.num_dags, batch_size))
+            itr = num_itr_per_epoch * completed_epochs
+            self.load(itr, baseline)
+
+        progress_bar = tqdm(range(start_epoch, start_epoch + epochs))
         dsc = ''
         print('*** Start training ***')
         for e in progress_bar:

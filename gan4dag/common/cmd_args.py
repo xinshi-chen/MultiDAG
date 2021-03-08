@@ -30,6 +30,7 @@ cmd_opt.add_argument('-num_epochs', type=int, default=1000, help='num epochs')
 cmd_opt.add_argument('-g_optimizer', type=str, default='adam')
 cmd_opt.add_argument('-d_optimizer', type=str, default='adam')
 cmd_opt.add_argument('-save_itr', type=int, default=32, help='how many iterations to save the trained states')
+cmd_opt.add_argument('-start_epoch', type=int, default=0)
 
 cmd_opt.add_argument('-num_sample_gen', type=int, default=512, help='number of observed samples for generator during training')
 

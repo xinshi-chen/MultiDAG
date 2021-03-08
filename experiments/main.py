@@ -111,7 +111,8 @@ if __name__ == '__main__':
         # ---------------------
         trainer = LsemTrainer(gen_net, disc_net, g_opt, d_opt, db, num_sample_gen=num_sample_gen, save_dir=cmd_args.save_dir,
                               model_dump=model_dump, save_itr=cmd_args.save_itr)
-        trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size, baseline=cmd_args.baseline)
+        trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size, baseline=cmd_args.baseline,
+                      start_epoch=cmd_args.start_epoch)
 
     if cmd_args.phase == 'test':
         # ---------------------
