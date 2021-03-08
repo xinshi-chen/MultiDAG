@@ -63,7 +63,6 @@ class LsemTrainer:
                 loss_fake = D_Loss(score_fake, torch.zeros(size=[m]).to(DEVICE))
                 loss_real = D_Loss(score_real, torch.ones(size=[m]).to(DEVICE))
                 d_loss = (loss_fake + loss_real) / 2
-
                 # backward
                 d_loss.backward()
                 self.d_optimizer.step()
@@ -73,6 +72,10 @@ class LsemTrainer:
                 progress_bar.set_description("[Epoch %.2f] [D: %.3f] [G: %.3f] [invalid W: %d]" %
                                              (epoch + float(it + 1) / num_iterations, d_loss_batch, g_loss_batch,
                                               num_invalid_W) + dsc)
+            else:
+                d_loss = self.g_net.zero
+                d_loss.backward()
+                self.d_optimizer.step()
 
             # -----------------
             #  Train Generator
