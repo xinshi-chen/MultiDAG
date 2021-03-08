@@ -1,7 +1,5 @@
 import torch
 import math
-import torch.nn.functional as F
-from torch.autograd import Variable
 import numpy as np
 from gan4dag.common.consts import DEVICE
 import os

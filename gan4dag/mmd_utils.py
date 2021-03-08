@@ -74,25 +74,6 @@ def get_gamma(X, bandwidth):
         return gamma
 
 
-def get_gamma_batch(X, bandwidth):
-
-    with torch.no_grad():
-        # X [m, n, d]
-        m, n = X.shape[0], X.shape[1]
-        x_norm = torch.sum(X ** 2, dim=2, keepdim=True)  # [m, n, 1]
-        x_t = torch.transpose(X, 1, 2)  # [m, d, n]
-        x_norm_t = torch.transpose(x_norm, 1, 2)   # [m, 1, n]
-        t = x_norm + x_norm_t - 2.0 * torch.einsum('bij,bjk->bik', X, x_t)   # [m, n, n]
-        dist2 = F.relu(Variable(t)).detach()
-        dist2 = dist2.view(m, n*n)
-        median_dist2 = torch.zeros(size=[m]).to(DEVICE)
-        for i in range(m):
-            d = dist2[i][dist2[i] > 0]
-            median_dist2[i] = torch.median(d)
-        gamma = 0.5 / median_dist2 / bandwidth
-        return gamma
-
-
 def get_kernel_mat(x, landmarks, gamma):
     """
     Reference: https://github.com/xinshi-chen/ParticleFlowBayesRule/blob/master/pfbayes/common/distributions.py#L68
@@ -118,6 +99,8 @@ def MMD_batch(x, y, bandwidth=1.0):
 
     y = y.detach()
 
+    # TODO: if y is training data. can precompute kyy and gamma.
+
     gamma = get_gamma_batch(y, bandwidth).detach()  # [m]
     kxx = kxx_batch(x, gamma, landmark=False)   # [m2, m, n2, n2]
     kxx = torch.sum(kxx.view(m2, m, n2 * n2), dim=-1) / n2 / (n2 - 1)  # [m2, m]
@@ -130,6 +113,25 @@ def MMD_batch(x, y, bandwidth=1.0):
 
     mmd = kxx + kyy.view(1, m).detach() - 2.0 * kxy
     return mmd
+
+
+def get_gamma_batch(X, bandwidth):
+
+    with torch.no_grad():
+        # X [m, n, d]
+        m, n = X.shape[0], X.shape[1]
+        x_norm = torch.sum(X ** 2, dim=2, keepdim=True)  # [m, n, 1]
+        x_t = torch.transpose(X, 1, 2)  # [m, d, n]
+        x_norm_t = torch.transpose(x_norm, 1, 2)   # [m, 1, n]
+        t = x_norm + x_norm_t - 2.0 * torch.einsum('bij,bjk->bik', X, x_t)   # [m, n, n]
+        dist2 = F.relu(Variable(t)).detach()
+        dist2 = dist2.view(m, n*n)
+        median_dist2 = torch.zeros(size=[m]).to(DEVICE)
+        for i in range(m):
+            d = dist2[i][dist2[i] > 0]
+            median_dist2[i] = torch.median(d)
+        gamma = 0.5 / median_dist2 / bandwidth
+        return gamma
 
 
 def kxx_batch(x, gamma, landmark=False):
