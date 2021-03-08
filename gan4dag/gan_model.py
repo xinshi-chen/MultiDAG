@@ -144,6 +144,7 @@ class DiscMMD(nn.Module):
         super(DiscMMD, self).__init__()
         # somehow this discriminator memorize the training data
         self.bw = bandwidth
+        self.zero = Parameter(torch.zeros(1))
 
     def forward(self, X, X_data):
         """

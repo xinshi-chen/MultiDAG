@@ -67,7 +67,7 @@ if __name__ == '__main__':
                                                         cmd_args.batch_size, cmd_args.g_lr)
         hp_arch = 'bw-%.2f' % cmd_args.bandwidth
 
-        disc_net = DiscMMD(bandwidth=cmd_args.bandwidth)
+        disc_net = DiscMMD(bandwidth=cmd_args.bandwidth).to(DEVICE)
     else:
         hidden_dim = cmd_args.f_hidden_dim
         output_hidden_dim = cmd_args.output_hidden_dim

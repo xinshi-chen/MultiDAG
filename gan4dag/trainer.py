@@ -73,7 +73,7 @@ class LsemTrainer:
                                              (epoch + float(it + 1) / num_iterations, d_loss_batch, g_loss_batch,
                                               num_invalid_W) + dsc)
             else:
-                d_loss = self.g_net.zero
+                d_loss = self.d_net.zero
                 d_loss.backward()
                 self.d_optimizer.step()
 
