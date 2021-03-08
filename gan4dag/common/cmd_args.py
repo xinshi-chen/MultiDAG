@@ -11,6 +11,7 @@ cmd_opt.add_argument('-f_hidden_dim', type=str, default='32-32')
 cmd_opt.add_argument('-f_act', type=str, default='relu')
 cmd_opt.add_argument('-output_hidden_dim', type=str, default='64-1')
 cmd_opt.add_argument('-output_act', type=str, default='relu')
+cmd_opt.add_argument('-bandwidth', type=float, default=1.0)
 
 # hyperparameters for synthetic distribution
 cmd_opt.add_argument('-d', type=int, default=5, help='dimension of RV')
@@ -36,6 +37,7 @@ cmd_opt.add_argument('-num_sample_gen', type=int, default=512, help='number of o
 
 cmd_opt.add_argument('-phase', type=str, default='train')
 cmd_opt.add_argument('-baseline', type=eval, default=False, help='If running baseline.')
+cmd_opt.add_argument('-mmd', type=eval, default=False, help='If using MMD as discriminator.')
 
 
 # save

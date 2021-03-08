@@ -24,7 +24,7 @@ class LsemTrainer:
         if not os.path.isdir(self.save_dir):
             os.makedirs(self.save_dir)
 
-    def _train_epoch(self, epoch, tot_epoch, batch_size, progress_bar, dsc, baseline=False):
+    def _train_epoch(self, epoch, tot_epoch, batch_size, progress_bar, dsc, baseline=False, mmd=False):
         self.g_net.train()
         self.d_net.train()
         data_loader = self.db.load_data(batch_size=batch_size,
@@ -57,21 +57,22 @@ class LsemTrainer:
             num_invalid_W += k
 
             # compute loss
-            score_fake = self.d_net(X_fake.detach())  # [m]
-            score_real = self.d_net(X)  # [m]
-            loss_fake = D_Loss(score_fake, torch.zeros(size=[m]).to(DEVICE))
-            loss_real = D_Loss(score_real, torch.ones(size=[m]).to(DEVICE))
-            d_loss = (loss_fake + loss_real) / 2
+            if not mmd:
+                score_fake = self.d_net(X_fake.detach())  # [m]
+                score_real = self.d_net(X)  # [m]
+                loss_fake = D_Loss(score_fake, torch.zeros(size=[m]).to(DEVICE))
+                loss_real = D_Loss(score_real, torch.ones(size=[m]).to(DEVICE))
+                d_loss = (loss_fake + loss_real) / 2
 
-            # backward
-            d_loss.backward()
-            self.d_optimizer.step()
+                # backward
+                d_loss.backward()
+                self.d_optimizer.step()
 
-            d_loss_batch = d_loss.item()
-            total_d_loss += d_loss_batch
-            progress_bar.set_description("[Epoch %.2f] [D: %.3f] [G: %.3f] [invalid W: %d]" %
-                                         (epoch + float(it + 1) / num_iterations, d_loss_batch, g_loss_batch,
-                                          num_invalid_W) + dsc)
+                d_loss_batch = d_loss.item()
+                total_d_loss += d_loss_batch
+                progress_bar.set_description("[Epoch %.2f] [D: %.3f] [G: %.3f] [invalid W: %d]" %
+                                             (epoch + float(it + 1) / num_iterations, d_loss_batch, g_loss_batch,
+                                              num_invalid_W) + dsc)
 
             # -----------------
             #  Train Generator
@@ -79,9 +80,15 @@ class LsemTrainer:
 
             self.g_optimizer.zero_grad()
 
-            # maximize log(sigmoid(D(G(z))))
-            score_fake = self.d_net(X_fake)
-            g_loss = D_Loss(score_fake, torch.ones(size=[m]).to(DEVICE))
+            if mmd:
+                mmd_fake = self.d_net(X_fake, X)  # [batch_size]
+                g_loss = torch.mean(mmd_fake)
+                d_loss_batch = 0.0
+                total_d_loss = 0.0
+            else:
+                # maximize log(sigmoid(D(G(z))))
+                score_fake = self.d_net(X_fake)
+                g_loss = D_Loss(score_fake, torch.ones(size=[m]).to(DEVICE))
 
             # backward
             g_loss.backward()
@@ -99,33 +106,46 @@ class LsemTrainer:
             self.train_itr += 1
             last_itr = (self.train_itr == tot_epoch * num_iterations)
             if (self.train_itr % self.save_itr == 0) or last_itr:
-                self.save(self.train_itr, baseline)
+                self.save(self.train_itr, baseline, mmd)
         return
 
-    def save(self, itr,  baseline=False):
+    def save(self, itr,  baseline=False, mmd=False):
         if baseline:
             save_dir = self.save_dir + '/baseline'
-            if not os.path.isdir(save_dir):
-                os.makedirs(save_dir)
-            dump = save_dir + '/Itr-%d-' % itr + self.model_dump
+        elif mmd:
+            save_dir = self.save_dir + '/mmd'
         else:
-            dump = self.save_dir + '/Itr-%d-' % itr + self.model_dump
-        torch.save(self.g_net.state_dict(), dump)
-        dump = dump[:-5] + '_disc.dump'
-        torch.save(self.d_net.state_dict(), dump)
+            save_dir = self.save_dir
 
-    def load(self, itr, baseline=False):
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir)
+
+        dump = save_dir + '/Itr-%d-' % itr + self.model_dump
+        torch.save(self.g_net.state_dict(), dump)
+
+        if not mmd:
+            dump = dump[:-5] + '_disc.dump'
+            torch.save(self.d_net.state_dict(), dump)
+
+    def load(self, itr, baseline=False, mmd=False):
         if baseline:
             save_dir = self.save_dir + '/baseline'
-            dump = save_dir + '/Itr-%d-' % itr + self.model_dump
+        elif mmd:
+            save_dir = self.save_dir + '/mmd'
         else:
-            dump = self.save_dir + '/Itr-%d-' % itr + self.model_dump
+            save_dir = self.save_dir
+
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir)
+
+        dump = save_dir + '/Itr-%d-' % itr + self.model_dump
 
         self.g_net.load_state_dict(torch.load(dump))
-        dump = dump[:-5] + '_disc.dump'
-        self.d_net.load_state_dict(torch.load(dump))
+        if not mmd:
+            dump = dump[:-5] + '_disc.dump'
+            self.d_net.load_state_dict(torch.load(dump))
 
-    def train(self, epochs, batch_size, baseline=False, start_epoch=0):
+    def train(self, epochs, batch_size, baseline=False, mmd=False, start_epoch=0):
         """
         training logic
         """
@@ -134,12 +154,12 @@ class LsemTrainer:
             completed_epochs = start_epoch
             num_itr_per_epoch = len(range(0, self.db.num_dags, batch_size))
             itr = num_itr_per_epoch * completed_epochs
-            self.load(itr, baseline)
+            self.load(itr, baseline, mmd)
 
         progress_bar = tqdm(range(start_epoch, start_epoch + epochs))
         dsc = ''
         print('*** Start training ***')
         for e in progress_bar:
-            self._train_epoch(e, epochs, batch_size, progress_bar, dsc, baseline)
+            self._train_epoch(e, epochs, batch_size, progress_bar, dsc, baseline, mmd)
 
         return

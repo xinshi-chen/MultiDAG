@@ -4,6 +4,7 @@ from gan4dag.common.consts import DEVICE
 from gan4dag.common.utils import weights_init, MLP
 from gan4dag.dag_utils import project_to_dag, sampler
 from torch.nn.parameter import Parameter
+from gan4dag.mmd_utils import MMD_batch
 
 
 class GenNet(nn.Module):
@@ -137,7 +138,28 @@ class DiscNet(nn.Module):
         return score.view(-1)
 
 
-# for baseline
+class DiscMMD(nn.Module):
+
+    def __init__(self, bandwidth):
+        super(DiscMMD, self).__init__()
+        # somehow this discriminator memorize the training data
+        self.bw = bandwidth
+
+    def forward(self, X, X_data):
+        """
+        :param X: [m2, n2, d] tensor
+        :param X_data: [m, n, d] tensor
+
+        :return: [m2] tensor
+        """
+        mmd = MMD_batch(X, X_data, bandwidth=self.bw)  # [m2, m]
+        mmd_avg = torch.mean(mmd, dim=-1)  # average MMD
+        return mmd_avg
+
+
+# -----------------
+#  For baseline
+# -----------------
 class DiscGIN(nn.Module):
     """
     Follow the architecture of GIN

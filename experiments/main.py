@@ -6,7 +6,7 @@ from gan4dag.common.cmd_args import cmd_args
 from gan4dag.data_generator import LsemDataset
 import random
 import numpy as np
-from gan4dag.gan_model import GenNet, DiscNet, DiscGIN
+from gan4dag.gan_model import GenNet, DiscNet, DiscGIN, DiscMMD
 
 
 D_Loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
@@ -55,6 +55,19 @@ if __name__ == '__main__':
         act = output_act = 'relu'
         hp_train = 'm-%d-n-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, cmd_args.batch_size,
                                                           cmd_args.g_lr, cmd_args.d_lr)
+        hp_arch = 'f-%s-%s-out-%s-%s' % (hidden_dim, act, output_hidden_dim, output_act)
+
+        disc_net = DiscGIN(d=d,
+                           hidden_dims=hidden_dim,
+                           nonlinearity=act,
+                           output_hidden_dims=output_hidden_dim,
+                           output_nonlinearity=output_act).to(DEVICE)
+    elif cmd_args.mmd:
+        hp_train = 'm-%d-n-%d-gen-%d-bs-%d-glr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, num_sample_gen,
+                                                        cmd_args.batch_size, cmd_args.g_lr)
+        hp_arch = 'bw-%.2f' % cmd_args.bandwidth
+
+        disc_net = DiscMMD(bandwidth=cmd_args.bandwidth)
     else:
         hidden_dim = cmd_args.f_hidden_dim
         output_hidden_dim = cmd_args.output_hidden_dim
@@ -62,7 +75,13 @@ if __name__ == '__main__':
         output_act = cmd_args.output_act
         hp_train = 'm-%d-n-%d-gen-%d-bs-%d-glr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, num_sample_gen,
                                                                  cmd_args.batch_size, cmd_args.g_lr, cmd_args.d_lr)
-    hp_arch = 'f-%s-%s-out-%s-%s' % (hidden_dim, act, output_hidden_dim, output_act)
+        hp_arch = 'f-%s-%s-out-%s-%s' % (hidden_dim, act, output_hidden_dim, output_act)
+
+        disc_net = DiscNet(d=d,
+                           f_hidden_dims=hidden_dim,
+                           f_nonlinearity=act,
+                           output_hidden_dims=output_hidden_dim,
+                           output_nonlinearity=output_act).to(DEVICE)
 
     model_dump = hp_arch + '-' + hp_train + '.dump'
 
@@ -80,19 +99,6 @@ if __name__ == '__main__':
                      noise_mean=noise_mean,
                      noise_sd=noise_sd,
                      W_sd=W_sd).to(DEVICE)
-
-    if cmd_args.baseline:
-        disc_net = DiscGIN(d=d,
-                           hidden_dims=hidden_dim,
-                           nonlinearity=act,
-                           output_hidden_dims=output_hidden_dim,
-                           output_nonlinearity=output_act).to(DEVICE)
-    else:
-        disc_net = DiscNet(d=d,
-                           f_hidden_dims=hidden_dim,
-                           f_nonlinearity=act,
-                           output_hidden_dims=output_hidden_dim,
-                           output_nonlinearity=output_act).to(DEVICE)
 
     if cmd_args.phase == 'train':
         # ---------------------
@@ -112,7 +118,7 @@ if __name__ == '__main__':
         trainer = LsemTrainer(gen_net, disc_net, g_opt, d_opt, db, num_sample_gen=num_sample_gen, save_dir=cmd_args.save_dir,
                               model_dump=model_dump, save_itr=cmd_args.save_itr)
         trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size, baseline=cmd_args.baseline,
-                      start_epoch=cmd_args.start_epoch)
+                      mmd=cmd_args.mmd, start_epoch=cmd_args.start_epoch)
 
     if cmd_args.phase == 'test':
         # ---------------------

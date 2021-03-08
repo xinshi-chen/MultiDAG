@@ -8,13 +8,15 @@ from gan4dag.mmd_utils import MMD
 
 
 class Eval:
-    def __init__(self, database, save_dir, model_dump, save_itr, baseline=False):
+    def __init__(self, database, save_dir, model_dump, save_itr, baseline=False, mmd=False):
         self.db = database
 
         data_hp = 'LSEM-d-%d-ts-%.2f-sp-%.2f' % (self.db.d, self.db.W_threshold, self.db.W_sparsity)
         self.save_dir = save_dir + '/' + data_hp
         if baseline:
             self.save_dir += '/baseline'
+        if mmd:
+            self.save_dir += '/mmd'
         self.model_dump = model_dump
         self.save_itr = save_itr
 
