@@ -1,10 +1,10 @@
 import torch
 import math
 import numpy as np
-from gan4dag.common.consts import DEVICE
+from vae4dag.common.consts import DEVICE
 import os
 import pickle as pkl
-from gan4dag.mmd_utils import MMD
+from vae4dag.mmd_utils import MMD
 
 
 class Eval:

@@ -1,10 +1,10 @@
 import torch.nn as nn
 import torch
-from gan4dag.common.consts import DEVICE
-from gan4dag.common.utils import weights_init, MLP
-from gan4dag.dag_utils import project_to_dag, sampler
+from vae4dag.common.consts import DEVICE
+from vae4dag.common.utils import weights_init, MLP
+from vae4dag.dag_utils import project_to_dag, sampler
 from torch.nn.parameter import Parameter
-from gan4dag.mmd_utils import MMD_batch
+from vae4dag.mmd_utils import MMD_batch
 
 
 class GenNet(nn.Module):

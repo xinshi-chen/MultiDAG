@@ -7,8 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
-from gan4dag.common.consts import DEVICE
-from gan4dag.common.consts import NONLINEARITIES
+from vae4dag.common.consts import DEVICE
+from vae4dag.common.consts import NONLINEARITIES
 
 
 def diff_soft_threshold(theta, x, k):

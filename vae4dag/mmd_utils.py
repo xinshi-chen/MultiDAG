@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
-from gan4dag.common.consts import DEVICE
+from vae4dag.common.consts import DEVICE
 
 
 # -----------------

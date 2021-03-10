@@ -2,7 +2,7 @@ import scipy.optimize as sopt
 import scipy.linalg as slin
 import numpy as np
 import networkx as nx
-from gan4dag.common.consts import DEVICE
+from vae4dag.common.consts import DEVICE
 import torch
 from notears.linear import notears_linear
 from tqdm import tqdm

@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from gan4dag.dag_utils import sampler, is_dag, project_to_dag, run_notears_linear
+from vae4dag.dag_utils import sampler, is_dag, project_to_dag, run_notears_linear
 import os
 import pickle as pkl
 from tqdm import tqdm
@@ -174,7 +174,7 @@ if __name__ == '__main__':
 
     dataset = LsemDataset(W_mean, W_sd, sparsity, threshold, noise_mean, noise_sd, num_dags, num_sample)
     batch_size = 10
-    from gan4dag.common.consts import DEVICE
+    from vae4dag.common.consts import DEVICE
     data_loader = dataset.load_data(batch_size=10, device=DEVICE)
 
     iterations = len(range(0, num_dags, batch_size))
