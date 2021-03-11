@@ -108,6 +108,46 @@ class MLP(nn.Module):
         return x
 
 
+class MLP_Batch(nn.Module):
+    """
+    d many MLPs
+    """
+    def __init__(self, d, input_dim, hidden_dims, nonlinearity, act_last=None):
+        super(MLP_Batch, self).__init__()
+        self.act_last = act_last
+        hidden_dims = tuple(map(int, hidden_dims.split("-")))
+        prev_size = input_dim
+
+        W_s = []
+        bias_s = []
+        activation_fns = []
+
+        for h in hidden_dims:
+            W_s.append(Parameter(torch.Tensor(size=[d, prev_size, h])))
+            bias_s.append(Parameter(torch.Tensor(size=[d, h])))
+            prev_size = h
+            activation_fns.append(NONLINEARITIES[nonlinearity])
+        if act_last is not None:
+            activation_fns[-1] = NONLINEARITIES[self.act_last]
+
+        self.output_size = prev_size
+        self.W_s = nn.ParameterList(W_s)
+        self.bias_s = nn.ParameterList(bias_s)
+        self.activation_fns = nn.ModuleList(activation_fns)
+
+        weights_init(self)
+
+    def forward(self, x):
+        """
+        x : [batch, d, input_dim] tensor
+        """
+        for l, W in enumerate(self.W_s):
+            x = torch.einsum('bdi,dij->bdj', x, W) + self.bias_s[l]  # X : [batch, d, h]  tensor
+            if l + 1 < len(self.W_s) or self.act_last is not None:
+                x = self.activation_fns[l](x)
+        return x
+
+
 def glorot_uniform(t):
     if len(t.size()) == 2:
         fan_in, fan_out = t.size()

@@ -1,11 +1,12 @@
 import torch.nn as nn
 import torch
 from vae4dag.common.consts import DEVICE, NONLINEARITIES
-from vae4dag.common.utils import weights_init, MLP, hard_threshold, diff_hard_threshold
+from vae4dag.common.utils import weights_init, MLP, hard_threshold, diff_hard_threshold, MLP_Batch
 from torch.nn.parameter import Parameter
 from torch.nn import TransformerEncoderLayer, TransformerEncoder
 from torch.nn import LayerNorm
 import torch.nn.functional as F
+import math
 
 
 class Encoder(nn.Module):
@@ -23,8 +24,8 @@ class Encoder(nn.Module):
         self.mlp_out_dim = dim_list[-1]
 
         # Part 0: First layer of MLP is variable-wise, not shared
-        self.W_1st = Parameter(torch.zeros(size=[d, mlp_1st_dim]))
-        self.bias_1st = Parameter(torch.zeros(size=[d, mlp_1st_dim]))
+        self.W_1st = Parameter(torch.Tensor(size=[d, mlp_1st_dim]))
+        self.bias_1st = Parameter(torch.Tensor(size=[d, mlp_1st_dim]))
         self.act_1st = NONLINEARITIES[mlp_act]
 
         # Part 1: Shared MLP
@@ -92,6 +93,40 @@ class Encoder(nn.Module):
         return (W_hard - W_approx).detach() + W_approx
 
 
+class Decoder(nn.Module):
+    
+    def __init__(self, d, f_hidden_dims='16-16-1', f_act='relu', g_hidden_dims='16-16-1', g_act='relu'):
+        super(Decoder, self).__init__()
+
+        dim_list = tuple(map(int, f_hidden_dims.split("-")))
+        assert dim_list[-1] == 1
+        dim_list = tuple(map(int, g_hidden_dims.split("-")))
+        assert dim_list[-1] == 1
+
+        self.f = MLP_Batch(d=d, input_dim=d, hidden_dims=f_hidden_dims, nonlinearity=f_act, act_last=None)
+        self.g = MLP_Batch(d=d, input_dim=d, hidden_dims=g_hidden_dims, nonlinearity=g_act, act_last=None)
+
+    def forward(self, W, X):
+        """
+        :param W: [batch, d, d] tensor
+        :param X: [batch, n, d] tensor
+        """
+        batch, n, d = X.shape
+        WX = torch.einsum('bij,bnj->bnij', W, X)  # [batch, n, d, d] tensor
+        mean = self.f(WX.view(batch*n, d, d)).view(batch, n, d)  # [batch, n, d]
+        sd = torch.abs(self.g(WX.view(batch*n, d, d)).view(batch, n, d))
+
+        return mean, sd
+
+    def NLL(self, W, X):
+        """
+        negative log likelihood
+        """
+        mean, sd = self.forward(W, X)
+        neg_log_likelihood = torch.log(math.sqrt(2 * math.pi) * sd) + 0.5 * ((X - mean) / sd) ** 2
+        return neg_log_likelihood
+
+
 class PairwiseScore(nn.Module):
     def __init__(self, dim_in, act='tanh'):
         super(PairwiseScore, self).__init__()
@@ -124,4 +159,9 @@ class PairwiseScore(nn.Module):
 if __name__ == '__main__':
     EncNet = Encoder(d=5).to(DEVICE)
     X = torch.rand([2, 3, 5]).to(DEVICE)
+    W = EncNet(X)
     print(EncNet(X))
+
+    DecNet = Decoder(d=5)
+    nll = DecNet.NLL(W, X)
+    print(nll)
