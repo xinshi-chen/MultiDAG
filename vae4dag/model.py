@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 from vae4dag.common.consts import DEVICE, NONLINEARITIES
-from vae4dag.common.utils import weights_init, MLP
+from vae4dag.common.utils import weights_init, MLP, hard_threshold, diff_hard_threshold
 from torch.nn.parameter import Parameter
 from torch.nn import TransformerEncoderLayer, TransformerEncoder
 from torch.nn import LayerNorm
@@ -13,8 +13,11 @@ class Encoder(nn.Module):
     X to W
     """
     def __init__(self, d, tf_nhead: int = 8, tf_num_stacks: int = 6, tf_ff_dim: int = 64, tf_dropout: float = 0.0,
-                 tf_act: str = 'relu', mlp_dim: str = '16-16-16', mlp_act='relu'):
+                 tf_act: str = 'relu', mlp_dim: str = '16-16-16', mlp_act='relu', temperature=3.0):
         super(Encoder, self).__init__()
+
+        self.k = temperature
+
         dim_list = tuple(map(int, mlp_dim.split("-")))
         mlp_1st_dim = dim_list[0]
         self.mlp_out_dim = dim_list[-1]
@@ -52,6 +55,9 @@ class Encoder(nn.Module):
         self.pairwise_score = PairwiseScore(dim_in=2 * self.mlp_out_dim, act='tanh')
         # W_ij = u^T tanh(W1 Enc_i + W2 Enc_j)
 
+        # Part 5: Threshold
+        self.S = Parameter(torch.ones(size=[d, d]) * 0.1)
+
     def forward(self, X):
         """
         :param X: [batch_size, n, d] tensor
@@ -79,7 +85,11 @@ class Encoder(nn.Module):
         # Part 4: Get adjacancy matrix
         W = self.pairwise_score(X_pooling)
 
-        return W
+        # Part 5: Take threshold
+        W_hard = hard_threshold(self.S, W)
+        W_approx = diff_hard_threshold(self.S, W, self.k)
+
+        return (W_hard - W_approx).detach() + W_approx
 
 
 class PairwiseScore(nn.Module):

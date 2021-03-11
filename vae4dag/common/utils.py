@@ -11,8 +11,6 @@ from vae4dag.common.consts import DEVICE
 from vae4dag.common.consts import NONLINEARITIES
 
 
-def diff_soft_threshold(theta, x, k):
-    return soft_sign(x, k) * F.relu(torch.abs(x) - theta)
 
 def torch_rand_choice(choices, size):
     n = len(choices)
@@ -60,16 +58,26 @@ def entropy(p):
     return -plogp-qlogq
 
 
-def soft_threshold(theta, x):
-    return torch.sign(x) * F.relu(torch.abs(x) - theta)
-
-
 def soft_sign(x, k):
     return 2 * torch.sigmoid(k * x) - 1
 
 
+def soft_threshold(theta, x):
+    return torch.sign(x) * F.relu(torch.abs(x) - theta)
+
+
 def diff_soft_threshold(theta, x, k):
     return soft_sign(x, k) * F.relu(torch.abs(x) - theta)
+
+
+def hard_threshold(theta, x):
+    return torch.sign(F.relu(torch.abs(x) - theta)) * x
+
+
+def diff_hard_threshold(theta, x, k):
+    return soft_sign(F.relu(torch.abs(x) - theta), k) * x
+
+
 
 
 class MLP(nn.Module):
