@@ -1,30 +1,34 @@
 import torch
+import torch.nn as nn
 import numpy as np
 from vae4dag.dag_utils import sampler, is_dag, project_to_dag, run_notears_linear
+from vae4dag.common.utils import MLP, weights_init
 import os
 import pickle as pkl
 from tqdm import tqdm
 
 
-
-class LsemDataset(object):
+class Dataset(object):
     """
     synthetic dataset
-    Linear SEM
     """
-    def __init__(self, d, W_sparsity, W_threshold, num_dags, num_sample, verbose=True):
+    def __init__(self, d, W_sparsity, W_threshold, num_dags, num_sample, f_hidden_dims, f_act, g_hidden_dims=None,
+                 g_act=None, verbose=True):
         """
         :param d: dimension of random variable
         :param W_sparsity, W_threshold: hyperparameters for generating W
         :param num_dags: number of DAGs for training (not observed)
         :param num_sample: number of samples observed from each training DAG
+
+        X_j = f_j(Pa(X_j)) + Z * g_j(Pa(X_j))
         """
 
         self.d = d
         self.W_sparsity = W_sparsity
         self.W_threshold = W_threshold
+        self.train_data = dict()
 
-        self.hp = 'LSEM-d-%d-ts-%.2f-sp-%.2f' % (self.d, self.W_threshold, self.W_sparsity)
+        self.hp = 'd-%d-ts-%.2f-sp-%.2f' % (self.d, self.W_threshold, self.W_sparsity)
 
         # ---------------------
         #  Load Meta Distribution
@@ -37,16 +41,12 @@ class LsemDataset(object):
 
         if os.path.isfile(self.data_pkl):
             with open(self.data_pkl, 'rb') as f:
-                self.W_mean, self.W_sd, self.noise_mean, self.noise_sd = pkl.load(f)
+                self.W_mean, self.W_sd = pkl.load(f)
         else:
             # Meta Distribution of W
-            self.W_mean = np.random.normal(size=[d, d]).astype(np.float32) * 3
-            self.W_sd = np.random.rand(d, d).astype(np.float32)
-            # Distribution Of Noise
-            self.noise_mean = np.zeros(d, dtype=np.float32)
-            self.noise_sd = np.ones(d, dtype=np.float32)
+            self.W_mean, self.W_sd = random_W_V(d)
             with open(self.data_pkl, 'wb') as f:
-                pkl.dump([self.W_mean, self.W_sd, self.noise_mean, self.noise_sd], f)
+                pkl.dump([self.W_mean, self.W_sd], f)
 
         if verbose:
             print('*** Mean of Meta Distribution ***')
@@ -54,14 +54,9 @@ class LsemDataset(object):
             print('*** SD of Meta Distribution ***')
             print(self.W_sd)
 
-        # ---------------------
-        #  Static Data For Training
-        # ---------------------
-        self.num_sample = num_sample
+        # generate DAGs for training
         self.num_dags = num_dags
-        self.train_data = dict()
 
-        # generate DAGs
         data_pkl = self.data_dir + '/' + self.hp + '-train-dag-%d.pkl' % num_dags
         if os.path.isfile(data_pkl):
             with open(data_pkl, 'rb') as f:
@@ -71,18 +66,53 @@ class LsemDataset(object):
             with open(data_pkl, 'wb') as f:
                 pkl.dump(self.train_data['dag'], f)
 
-        # generate observed data
-        data_pkl = self.data_dir + '/' + self.hp + '-train-data-%d-%d.pkl' % (num_dags, num_sample)
+        # ---------------------
+        #  Load Likelihood function
+        # ---------------------
+
+        self.f_hp = "-".join([f_hidden_dims, f_act])
+        self.f = self.load_likelihood_function(f_hidden_dims, f_act, name='mean')
+
+        if g_hidden_dims is not None:
+            self.g_hp = "-".join([g_hidden_dims, g_act])
+            self.g = self.load_likelihood_function(g_hidden_dims, g_act, name='sd')
+        else:
+            self.g_hp = "0"
+            self.g = None
+
+        # ---------------------
+        #  Generate Observations From Training DAGs
+        # ---------------------
+        self.num_sample = num_sample
+
+        hp = "-".join([self.hp, self.f_hp, self.g_hp])
+        data_pkl = self.data_dir + '/' + hp + '-train-data-%d-%d.pkl' % (num_dags, num_sample)
+
         if os.path.isfile(data_pkl):
             with open(data_pkl, 'rb') as f:
                 self.train_data['data'] = pkl.load(f)
         else:
             self.train_data['data'] = self.gen_batch_sample(W=self.train_data['dag'],
-                                                            n=self.num_sample)
+                                                            n=self.num_sample).detach()
             with open(data_pkl, 'wb') as f:
                 pkl.dump(self.train_data['data'], f)
 
         self.static = dict()
+
+    def load_likelihood_function(self, hidden_dims, act, name):
+        f = []
+        for i in range(self.d):
+            f.append(MLP(input_dim=self.d, hidden_dims=hidden_dims, nonlinearity=act, act_last=None))
+        f = nn.ModuleList(f)
+        arch_hp = "-".join([name, hidden_dims, act])
+        filename = self.data_dir + '/' + self.hp + '-' + arch_hp + '.dump'
+
+        if os.path.isfile(filename):
+            f.load_state_dict(torch.load(filename))
+        else:
+            weights_init(f)
+            torch.save(f.state_dict(), filename)
+        return f
 
     def gen_dags(self, m):
         """
@@ -110,19 +140,21 @@ class LsemDataset(object):
         return W
 
     def gen_batch_sample(self, W, n):
+
         assert len(W.shape) == 3
+
+        if isinstance(W, np.ndarray):
+            W = torch.tensor(W)
+
         num_dags = W.shape[0]
-        X = np.zeros([num_dags, n, self.d], dtype=np.float32)
+        X = torch.zeros(size=[num_dags, n, self.d])
         for i in range(num_dags):
-            X[i, :, :] = sampler(W[i], n, self.noise_mean, self.noise_sd, noise_type='gauss')
+            X[i, :, :] = sampler(W[i], n, self.f, self.g)
         return X
 
-    def load_data(self, batch_size, auto_reset=False, shuffle=True, device=None, baseline=False):
+    def load_data(self, batch_size, auto_reset=False, shuffle=True, device=None):
 
-        if baseline:
-            X = torch.tensor(self.static['to-dag'])
-        else:
-            X = torch.tensor(self.train_data['data'])
+        X = self.train_data['data']
 
         while True:
             if shuffle:
@@ -143,36 +175,31 @@ class LsemDataset(object):
             if not auto_reset:
                 break
 
-    def train_to_dag(self):
 
-        filename = self.data_dir + '/' + self.hp + '-train-data-%d-%d-to-DAG.pkl' % (self.num_dags, self.num_sample)
-        # load if exists
-        if os.path.isfile(filename):
-            with open(filename, 'rb') as f:
-                W_est = pkl.load(f)
-        else:
-            # Run NOTEARS
-            W_est = run_notears_linear(self.train_data['data'])
-            with open(filename, 'wb') as f:
-                pkl.dump(W_est, f)
+def random_W_V(d, p=0.5):
+    # mean
+    A_int = (np.random.rand(d, d) < p)
+    A = A_int.astype(np.float32)
+    U = np.random.uniform(low=0.1, high=5.0, size=[d, d])
+    U[np.random.rand(d, d) < 0.5] *= -1
+    W = A * U.astype(np.float32)
 
-        self.static['to-dag'] = W_est
+    # sd
+    SD = np.random.rand(d, d).astype(np.float32)
+    # if mean is zero, then make SD small (unlikely to have an edge)
+    SD = SD * 0.1 + (SD * 0.9) * A
+    return W, SD
 
 
 if __name__ == '__main__':
+
     d = 5
-    num_dags = 30
+    num_dags = 10
     num_sample = 5
     threshold = 0.1
     sparsity = 1.0
 
-    W_mean = np.random.normal(size=[d, d]) * 3
-    W_sd = np.random.rand(d, d)
-
-    noise_mean = np.zeros(d)
-    noise_sd = np.ones(d)
-
-    dataset = LsemDataset(W_mean, W_sd, sparsity, threshold, noise_mean, noise_sd, num_dags, num_sample)
+    dataset = Dataset(d, sparsity, threshold, num_dags, num_sample, f_hidden_dims='6-1', f_act='relu')
     batch_size = 10
     from vae4dag.common.consts import DEVICE
     data_loader = dataset.load_data(batch_size=10, device=DEVICE)

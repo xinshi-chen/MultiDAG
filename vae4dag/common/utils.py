@@ -78,8 +78,6 @@ def diff_hard_threshold(theta, x, k):
     return soft_sign(F.relu(torch.abs(x) - theta), k) * x
 
 
-
-
 class MLP(nn.Module):
     def __init__(self, input_dim, hidden_dims, nonlinearity, act_last=None):
         super(MLP, self).__init__()

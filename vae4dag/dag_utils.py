@@ -134,64 +134,43 @@ def project_notears(X, sparsity=1.0, max_iter=100, h_tol=1e-3, rho_max=1e+16, w_
     return W_est, P
 
 
-def sampler(W, n, noise_mean, noise_sd, noise_type='gauss'):
+def sampler(W, n, f, g=None):
     """
-    sample n samples from the LSEM defined by W and the noise distribution
+    sample n samples from the probablistic model defined by W, f, and g
 
-    :param W: weighted adjacency matrix of a DAG
+    :param W: weighted adjacency matrix. size=[d, d]
     :param n: number of samples
-    :param noise_mean: mean of noise distribution. An array of d entries.
-    :param noise_sd: standard variance of noise distribution. An array of d entries.
-    :param noise_type:
 
     :return: X: [n, d] sample matrix
     """
 
     if isinstance(W, np.ndarray):
-        data_type = 'numpy'
-    elif torch.is_tensor(W):
-        data_type = 'torch'
-    else:
+        W = torch.tensor(W)
+    elif not torch.is_tensor(W):
         raise NotImplementedError('Adjacency matrix should be np.ndarray or torch.tensor.')
 
     d = W.shape[0]
 
-    if data_type == 'numpy':
-        X = np.zeros([n, d], dtype=np.float32)
-    else:
-        X = torch.zeros([n, d]).to(DEVICE)
+    X = torch.zeros([n, d])
 
-    if noise_type == 'gauss':
+    z = torch.normal(0, 1, size=(n, d)).float()
 
-        if data_type == 'numpy':
-            z0 = np.random.normal(size=(n, d)).astype(np.float32)
-        else:
-            z0 = torch.normal(0, 1, size=(n, d)).float().to(DEVICE).detach()
-
-        z = z0 * noise_sd
-        z = z + noise_mean
-    else:
-        raise ValueError('unknown noise type')
-
-    # get the topological order of the DAG (no need to differentiate through this step)
-    if data_type == 'numpy':
-        G = nx.DiGraph(W)
-    else:
-        G = nx.DiGraph(W.detach().cpu().numpy())
+    # get the topological order of the DAG
+    G = nx.DiGraph(W.detach().cpu().numpy())
     ordered_vertices = list(nx.topological_sort(G))
     assert len(ordered_vertices) == d
     for j in ordered_vertices:
-        parents = list(G.predecessors(j))
-        if len(parents) > 0:
-            if data_type == 'numpy':
-                eta = X[:, parents].dot(W[parents, j])
-            else:
-                eta = torch.sum(X[:, parents] * W[parents, j], -1)  # the parameter W here should requires gradients
-        else:
-            eta = 0.0
-        X[:, j] = eta + z[:, j]
-    return X
 
+        WX = W[:, j] * X  # [n, d]
+        m_j = f[j](WX).view(n)  # [n]
+
+        if g is not None:
+            sigma_j = torch.abs(g[j](WX).view(n))
+        else:
+            sigma_j = 1.0
+
+        X[:, j] = m_j + z[:, j] * sigma_j
+    return X
 
 if __name__ == '__main__':
     d = 2

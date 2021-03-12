@@ -95,7 +95,7 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     
-    def __init__(self, d, f_hidden_dims='16-16-1', f_act='relu', g_hidden_dims='16-16-1', g_act='relu'):
+    def __init__(self, d, f_hidden_dims='16-16-1', f_act='relu', g_hidden_dims='16-16-1', g_act='relu', learn_sd=False):
         super(Decoder, self).__init__()
 
         dim_list = tuple(map(int, f_hidden_dims.split("-")))
@@ -104,18 +104,23 @@ class Decoder(nn.Module):
         assert dim_list[-1] == 1
 
         self.f = MLP_Batch(d=d, input_dim=d, hidden_dims=f_hidden_dims, nonlinearity=f_act, act_last=None)
-        self.g = MLP_Batch(d=d, input_dim=d, hidden_dims=g_hidden_dims, nonlinearity=g_act, act_last=None)
+        if learn_sd:
+            self.g = MLP_Batch(d=d, input_dim=d, hidden_dims=g_hidden_dims, nonlinearity=g_act, act_last=None)
+        else:
+            self.g = None
 
     def forward(self, W, X):
         """
-        :param W: [batch, d, d] tensor
+        :param W: [batch, d, d] tensor  d1 == d
         :param X: [batch, n, d] tensor
         """
         batch, n, d = X.shape
-        WX = torch.einsum('bij,bnj->bnij', W, X)  # [batch, n, d, d] tensor
+        WX = torch.einsum('bji,bnj->bnij', W, X)  # [batch, n, d, d] tensor
         mean = self.f(WX.view(batch*n, d, d)).view(batch, n, d)  # [batch, n, d]
-        sd = torch.abs(self.g(WX.view(batch*n, d, d)).view(batch, n, d))
-
+        if self.g is None:
+            sd = None
+        else:
+            sd = torch.abs(self.g(WX.view(batch*n, d, d)).view(batch, n, d))
         return mean, sd
 
     def NLL(self, W, X):
@@ -123,7 +128,13 @@ class Decoder(nn.Module):
         negative log likelihood
         """
         mean, sd = self.forward(W, X)
-        neg_log_likelihood = torch.log(math.sqrt(2 * math.pi) * sd) + 0.5 * ((X - mean) / sd) ** 2
+        if sd is None:
+            sd = 1.0
+            log_z = 0.5 * math.log(2 * math.pi)
+        else:
+            log_z = 0.5 * math.log(2 * math.pi) + torch.log(sd)
+        neg_log_likelihood = log_z + 0.5 * ((X - mean) / sd) ** 2
+
         return neg_log_likelihood
 
 
@@ -159,8 +170,19 @@ class PairwiseScore(nn.Module):
 if __name__ == '__main__':
     EncNet = Encoder(d=5).to(DEVICE)
     X = torch.rand([2, 3, 5]).to(DEVICE)
-    W = EncNet(X)
+    W = EncNet(X)  # [2, 5, 5]
     print(EncNet(X))
+
+    # batch = 2
+    # n = 3
+    # d = 5
+    # wx = torch.zeros(size=[batch, n, d, d])
+    # for b in range(batch):
+    #     for k in range(n):
+    #         for i in range(d):
+    #             wx[b, k, i] = W[b, :, i] * X[b, k]
+    # print(wx)
+    # print(torch.einsum('bji,bnj->bnij', W, X))
 
     DecNet = Decoder(d=5)
     nll = DecNet.NLL(W, X)
