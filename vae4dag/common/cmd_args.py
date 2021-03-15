@@ -25,16 +25,16 @@ cmd_opt.add_argument('-temperature', type=float, default=3.0)
 """
 decoder
 """
-cmd_opt.add_argument('-f_hidden_dim', type=str, default='32-32')
+cmd_opt.add_argument('-f_hidden_dim', type=str, default='16-16-1')
 cmd_opt.add_argument('-f_act', type=str, default='relu')
-cmd_opt.add_argument('-g_hidden_dim', type=str, default='32-32')
+cmd_opt.add_argument('-g_hidden_dim', type=str, default='16-16-1')
 cmd_opt.add_argument('-g_act', type=str, default='relu')
 
 # hyperparameters for synthetic distribution
 cmd_opt.add_argument('-d', type=int, default=5, help='dimension of RV')
 cmd_opt.add_argument('-threshold', type=float, default=0.1)
 cmd_opt.add_argument('-sparsity', type=float, default=1.0, help='l1 penalty coefficient in the projection')
-cmd_opt.add_argument('-true_f_hidden_dim', type=str, default='32-32')
+cmd_opt.add_argument('-true_f_hidden_dim', type=str, default='16-16-1')
 cmd_opt.add_argument('-true_f_act', type=str, default='relu')
 
 cmd_opt.add_argument('-learn_sd', type=eval, default=False, help='If false, then only learn the mean of the meta-distribution, while the variance is given.')

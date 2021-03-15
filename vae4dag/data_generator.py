@@ -100,6 +100,9 @@ class Dataset(object):
         self.static = dict()
 
     def load_likelihood_function(self, hidden_dims, act, name):
+        dim_list = tuple(map(int, hidden_dims.split("-")))
+        assert dim_list[-1] == 1
+
         f = []
         for i in range(self.d):
             f.append(MLP(input_dim=self.d, hidden_dims=hidden_dims, nonlinearity=act, act_last=None))
