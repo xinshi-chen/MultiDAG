@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     hp_train = 'm-%d-n-%d-gen-%d-bs-%d-elr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, num_sample_gen,
                                                              cmd_args.batch_size, cmd_args.e_lr, cmd_args.d_lr)
-    hp_arch_enc = "-".join([mlp_dim, mlp_act, str(tf_nhead), str(tf_num_stacks), tf_ff_dim, tf_act, str(temp)])
+    hp_arch_enc = "-".join([mlp_dim, mlp_act, str(tf_nhead), str(tf_num_stacks), str(tf_ff_dim), tf_act, str(temp)])
     hp_arch_dec = "-".join([f_dims, f_act])
 
     model_dump = "-".join([hp_arch_enc, hp_arch_dec, hp_train]) + '.dump'

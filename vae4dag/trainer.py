@@ -89,11 +89,11 @@ class Trainer:
         train_hp = []
         for key in default:
             train_hp.append(key)
-            train_hp.append(self.hyperparameter[key])
+            train_hp.append(str(self.hyperparameter[key]))
         train_hp.append(constraint_type)
 
         self.train_hp = "-".join(train_hp)
-        self.save_itr += '/' + train_hp
+        self.save_dir += '/' + self.train_hp
         if not os.path.isdir(self.save_dir):
             os.makedirs(self.save_dir)
 
