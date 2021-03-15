@@ -155,11 +155,14 @@ class Dataset(object):
     def load_data(self, batch_size, auto_reset=False, shuffle=True, device=None):
 
         X = self.train_data['data']
+        idx = torch.arange(0, self.num_dags)
 
         while True:
             if shuffle:
                 perms = torch.randperm(self.num_dags)
                 X = X[perms, :, :]
+                idx = idx[perms]
+
             for pos in range(0, self.num_dags, batch_size):
                 if pos + batch_size > self.num_dags:  # the last mini-batch has fewer samples
                     if auto_reset:  # no need to use this last mini-batch
@@ -169,9 +172,9 @@ class Dataset(object):
                 else:
                     num_samples = batch_size
                 if device is None:
-                    yield X[pos : pos + num_samples, :, :].detach()
+                    yield X[pos : pos + num_samples, :, :].detach(), idx[pos : pos + num_sample].detach()
                 else:
-                    yield X[pos : pos + num_samples, :, :].detach().to(device)
+                    yield X[pos : pos + num_samples, :, :].detach().to(device), idx[pos : pos + num_sample].detach().to(device)
             if not auto_reset:
                 break
 
@@ -206,6 +209,7 @@ if __name__ == '__main__':
 
     iterations = len(range(0, num_dags, batch_size))
     for i in range(iterations):
-        x = next(data_loader)
+        data = next(data_loader)
+        x, idx = data
         print(i)
         print(x)

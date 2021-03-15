@@ -127,13 +127,13 @@ class Decoder(nn.Module):
         """
         negative log likelihood
         """
-        mean, sd = self.forward(W, X)
+        mean, sd = self.forward(W, X)  # [batch, n, d]
         if sd is None:
             sd = 1.0
             log_z = 0.5 * math.log(2 * math.pi)
         else:
             log_z = 0.5 * math.log(2 * math.pi) + torch.log(sd)
-        neg_log_likelihood = log_z + 0.5 * ((X - mean) / sd) ** 2
+        neg_log_likelihood = log_z + 0.5 * ((X - mean) / sd) ** 2  # [batch, n, d]
 
         return neg_log_likelihood
 
