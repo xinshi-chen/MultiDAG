@@ -82,20 +82,39 @@ class Trainer:
         self.hw_prev = torch.ones(size=[self.db.num_dags]).to(DEVICE) * math.inf
 
         # make the save_dir with hyperparameter index
-        data_hp = 'd-%d-ts-%.2f-sp-%.2f' % (self.db.d, self.db.W_threshold, self.db.W_sparsity)
-        self.save_dir = save_dir + '/' + data_hp
+        self.save_dir = save_dir + '/' + data_base.dataset_hp
         if not os.path.isdir(self.save_dir):
             os.makedirs(self.save_dir)
 
-        train_hp = ''
+        train_hp = []
         for key in default:
-            if len(train_hp) > 0:
-                train_hp += '-'
-            train_hp += key
-            train_hp += str(self.hyperparameter[key])
+            train_hp.append(key)
+            train_hp.append(self.hyperparameter[key])
+        train_hp.append(constraint_type)
+
+        self.train_hp = "-".join(train_hp)
         self.save_itr += '/' + train_hp
         if not os.path.isdir(self.save_dir):
             os.makedirs(self.save_dir)
+
+    def train(self, epochs, batch_size, start_epoch=0):
+        """
+        training logic
+        """
+
+        if start_epoch > 0:
+            completed_epochs = start_epoch
+            num_itr_per_epoch = len(range(0, self.db.num_dags, batch_size))
+            itr = num_itr_per_epoch * completed_epochs
+            self.load(itr)
+
+        progress_bar = tqdm(range(start_epoch, start_epoch + epochs))
+        dsc = ''
+        print('*** Start training ***')
+        for e in progress_bar:
+            self._train_epoch(e, epochs, batch_size, progress_bar, dsc)
+
+        return
 
     def _train_epoch(self, epoch, tot_epoch, batch_size, progress_bar, dsc):
         self.encoder.train()
@@ -126,25 +145,23 @@ class Trainer:
                 self.update_lambda_c(hw_new, idx)
                 self.hw_prev[idx] = hw_new
 
-            lambda_hw = torch.mean(self.ld[idx] * hw)
+            lambda_hw = torch.mean(self.ld[idx].detach() * hw)
 
             # dagness - l2 penalty
-            c_hw_2 = torch.mean(0.5 * self.c[idx] * hw * hw)
+            c_hw_2 = torch.mean(0.5 * self.c[idx].detach() * hw * hw)
 
             # l1 regularization
-            w_l1 = torch.mean(self.hyperparameter['rho'] * torch.sum(torch.abs(W).view(m, -1), dim=-1))
+            w_l1 = torch.mean(torch.sum(torch.abs(W).view(m, -1), dim=-1))
 
-            loss = nll + w_l1 + lambda_hw + c_hw_2
+            loss = nll + self.hyperparameter['rho'] * w_l1 + lambda_hw + c_hw_2
 
             # backward
             loss.backward()
             self.e_optimizer.step()
             self.d_optimizer.step()
 
-            nll_batch = nll.item()
-            hw_batch = hw.mean().item()
             progress_bar.set_description("[Epoch %.2f] [nll: %.3f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
-                                         (epoch + float(it + 1) / num_iterations, nll_batch, hw_batch,
+                                         (epoch + float(it + 1) / num_iterations, nll.item(), hw.mean().item(),
                                           self.ld.mean().item(), self.c.mean().item()) + dsc)
 
             # -----------------
@@ -179,21 +196,3 @@ class Trainer:
         dump = dump[:-5] + '_decoder.dump'
         self.decoder.load_state_dict(torch.load(dump))
 
-    def train(self, epochs, batch_size, start_epoch=0):
-        """
-        training logic
-        """
-
-        if start_epoch > 0:
-            completed_epochs = start_epoch
-            num_itr_per_epoch = len(range(0, self.db.num_dags, batch_size))
-            itr = num_itr_per_epoch * completed_epochs
-            self.load(itr)
-
-        progress_bar = tqdm(range(start_epoch, start_epoch + epochs))
-        dsc = ''
-        print('*** Start training ***')
-        for e in progress_bar:
-            self._train_epoch(e, epochs, batch_size, progress_bar, dsc)
-
-        return

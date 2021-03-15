@@ -85,8 +85,8 @@ class Dataset(object):
         # ---------------------
         self.num_sample = num_sample
 
-        hp = "-".join([self.hp, self.f_hp, self.g_hp])
-        data_pkl = self.data_dir + '/' + hp + '-train-data-%d-%d.pkl' % (num_dags, num_sample)
+        self.dataset_hp = "-".join([self.hp, self.f_hp, self.g_hp])
+        data_pkl = self.data_dir + '/' + self.dataset_hp + '-train-data-%d-%d.pkl' % (num_dags, num_sample)
 
         if os.path.isfile(data_pkl):
             with open(data_pkl, 'rb') as f:
