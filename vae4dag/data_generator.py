@@ -166,7 +166,7 @@ class Dataset(object):
                 perms = torch.randperm(self.num_dags)
                 X = X[perms, :, :]
                 idx = idx[perms]
-                nll = nll[perms, :, :]
+                nll = nll[perms]
 
             for pos in range(0, self.num_dags, batch_size):
                 if pos + batch_size > self.num_dags:  # the last mini-batch has fewer samples
