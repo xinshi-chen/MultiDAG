@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     f_dims = cmd_args.f_hidden_dim
     f_act = cmd_args.f_act
-    decoder = Decoder(d, f_hidden_dims=f_dims, f_act=f_act, learn_sd=False)
+    decoder = Decoder(d, f_hidden_dims=f_dims, f_act=f_act, learn_sd=False).to(DEVICE)
 
     hp_train = 'm-%d-n-%d-gen-%d-bs-%d-elr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, num_sample_gen,
                                                              cmd_args.batch_size, cmd_args.e_lr, cmd_args.d_lr)
