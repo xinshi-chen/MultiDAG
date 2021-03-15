@@ -133,7 +133,7 @@ class Trainer:
             self.d_optimizer.zero_grad()
 
             # compute W
-            W = self.encoder(X)   # [m, d, d]
+            W = self.encoder(X.to(DEVICE))   # [m, d, d]
 
             # compute neg log likelihood
             nll = torch.mean(torch.sum(self.decoder.NLL(W, X), -1))  # [1]

@@ -34,7 +34,7 @@ class Encoder(nn.Module):
         self.mlp = MLP(input_dim=mlp_1st_dim,
                        hidden_dims=mlp_dim,
                        nonlinearity=mlp_act,
-                       act_last=None).to(DEVICE)
+                       act_last=None)
 
         weights_init(self)
 
