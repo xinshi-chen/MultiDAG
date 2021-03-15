@@ -175,9 +175,9 @@ class Dataset(object):
                 else:
                     num_samples = batch_size
                 if device is None:
-                    yield X[pos : pos + num_samples, :, :].detach(), idx[pos : pos + num_sample].detach()
+                    yield X[pos : pos + num_samples, :, :].detach(), idx[pos : pos + num_samples].detach()
                 else:
-                    yield X[pos : pos + num_samples, :, :].detach().to(device), idx[pos : pos + num_sample].detach().to(device)
+                    yield X[pos : pos + num_samples, :, :].detach().to(device), idx[pos : pos + num_samples].detach().to(device)
             if not auto_reset:
                 break
 
