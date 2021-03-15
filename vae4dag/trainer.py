@@ -126,7 +126,9 @@ class Trainer:
         num_iterations = len(range(0, self.db.num_dags, batch_size))
 
         for it, data in enumerate(data_loader):
-            X, idx = data
+            X, idx, true_nll = data
+            true_nll = true_nll.mean().item()
+
             m = X.shape[0]  # number of DAGs in this batch
 
             self.e_optimizer.zero_grad()
@@ -160,8 +162,8 @@ class Trainer:
             self.e_optimizer.step()
             self.d_optimizer.step()
 
-            progress_bar.set_description("[Epoch %.2f] [nll: %.3f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
-                                         (epoch + float(it + 1) / num_iterations, nll.item(), hw.mean().item(),
+            progress_bar.set_description("[Epoch %.2f] [nll: %.3f / %.3f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
+                                         (epoch + float(it + 1) / num_iterations, nll.item(), true_nll, hw.mean().item(),
                                           self.ld.mean().item(), self.c.mean().item()) + dsc)
 
             # -----------------

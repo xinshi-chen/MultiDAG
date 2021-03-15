@@ -6,6 +6,7 @@ from vae4dag.common.consts import DEVICE
 import torch
 from notears.linear import notears_linear
 from tqdm import tqdm
+import math
 
 
 def run_notears_linear(X):
@@ -152,6 +153,7 @@ def sampler(W, n, f, g=None):
     d = W.shape[0]
 
     X = torch.zeros([n, d])
+    neg_log_likelihood = torch.zeros([n, d])
 
     z = torch.normal(0, 1, size=(n, d)).float()
 
@@ -162,15 +164,20 @@ def sampler(W, n, f, g=None):
     for j in ordered_vertices:
 
         WX = W[:, j] * X  # [n, d]
-        m_j = f[j](WX).view(n)  # [n]
+        m_j = f[j](WX).view(n)  # mean [n]
 
         if g is not None:
             sigma_j = torch.abs(g[j](WX).view(n))
+            log_z = 0.5 * math.log(2 * math.pi) + torch.log(sigma_j)
         else:
             sigma_j = 1.0
+            log_z = 0.5 * math.log(2 * math.pi)
 
         X[:, j] = m_j + z[:, j] * sigma_j
-    return X
+        neg_log_likelihood[:, j] = log_z + 0.5 * ((X[:, j] - m_j) / sigma_j) ** 2
+
+    return X, torch.sum(neg_log_likelihood, dim=-1).mean().item()
+
 
 if __name__ == '__main__':
     d = 2

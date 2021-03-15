@@ -93,7 +93,7 @@ class Dataset(object):
                 self.train_data['data'] = pkl.load(f)
         else:
             self.train_data['data'] = self.gen_batch_sample(W=self.train_data['dag'],
-                                                            n=self.num_sample).detach()
+                                                            n=self.num_sample)
             with open(data_pkl, 'wb') as f:
                 pkl.dump(self.train_data['data'], f)
 
@@ -151,13 +151,14 @@ class Dataset(object):
 
         num_dags = W.shape[0]
         X = torch.zeros(size=[num_dags, n, self.d])
+        nll = torch.zeros(size=[num_dags])
         for i in range(num_dags):
-            X[i, :, :] = sampler(W[i], n, self.f, self.g)
-        return X
+            X[i, :, :], nll[i] = sampler(W[i], n, self.f, self.g)
+        return X.detach(), nll.detach()
 
     def load_data(self, batch_size, auto_reset=False, shuffle=True, device=None):
 
-        X = self.train_data['data']
+        X, nll = self.train_data['data']
         idx = torch.arange(0, self.num_dags)
 
         while True:
@@ -165,6 +166,7 @@ class Dataset(object):
                 perms = torch.randperm(self.num_dags)
                 X = X[perms, :, :]
                 idx = idx[perms]
+                nll = nll[perms, :, :]
 
             for pos in range(0, self.num_dags, batch_size):
                 if pos + batch_size > self.num_dags:  # the last mini-batch has fewer samples
@@ -175,9 +177,11 @@ class Dataset(object):
                 else:
                     num_samples = batch_size
                 if device is None:
-                    yield X[pos : pos + num_samples, :, :].detach(), idx[pos : pos + num_samples].detach()
+                    yield X[pos : pos + num_samples, :, :].detach(), idx[pos : pos + num_samples].detach(),\
+                          nll[pos : pos + num_samples].detach()
                 else:
-                    yield X[pos : pos + num_samples, :, :].detach().to(device), idx[pos : pos + num_samples].detach().to(device)
+                    yield X[pos : pos + num_samples, :, :].detach().to(device), idx[pos : pos + num_samples].\
+                        detach().to(device), nll[pos : pos + num_samples].detach().to(device)
             if not auto_reset:
                 break
 
