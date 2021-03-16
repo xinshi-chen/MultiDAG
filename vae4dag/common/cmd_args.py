@@ -56,9 +56,9 @@ cmd_opt.add_argument('-hw_type', type=str, default='notears', choices=['notears'
 
 cmd_opt.add_argument('-rho', type=float, default=0.1)
 cmd_opt.add_argument('-gamma', type=float, default=1.0)
-cmd_opt.add_argument('-ld', type=float, default=0.0001)
-cmd_opt.add_argument('-c', type=float, default=0.0001)
-cmd_opt.add_argument('-eta', type=float, default=1.2)
+cmd_opt.add_argument('-ld', type=float, default=0.001)
+cmd_opt.add_argument('-c', type=float, default=0.001)
+cmd_opt.add_argument('-eta', type=float, default=1.1)
 
 cmd_opt.add_argument('-num_sample_gen', type=int, default=512, help='number of observed samples for generator during training')
 
