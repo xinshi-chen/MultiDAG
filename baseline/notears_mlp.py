@@ -72,14 +72,14 @@ def notears_mlp(X, X_test):
     nll_est = np.zeros([num_dag])
     progress_bar = tqdm(range(num_dag))
     for i in progress_bar:
-        model = NotearsMLP(dims=[d, 32, 16, 1], bias=True).to(DEVICE)
+        model = NotearsMLP(dims=[d, 32, 16, 1], bias=True)
         W_est[i] = notears_nonlinear(model, X[i], lambda1=0.01, lambda2=0.01)
         assert is_dag(W_est[i])
 
         # compute likelihood
 
         with torch.no_grad():
-            X_test_i = X_test[i].to(DEVICE)
+            X_test_i = X_test[i]
             X_mean = model(X_test_i)
             log_z = 0.5 * math.log(2 * math.pi)
             neg_log_likelihood = log_z + 0.5 * (X_test_i - X_mean) ** 2  # [n, d]
