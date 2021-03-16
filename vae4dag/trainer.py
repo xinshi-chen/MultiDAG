@@ -10,7 +10,7 @@ D_Loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
 
 def matrix_poly(W):
     m, d = W.shape[0], W.shape[1]
-    x = torch.eye(d).unsqueeze(0).repeat(m, 1, 1).detach() + 1/d * W
+    x = torch.eye(d).unsqueeze(0).repeat(m, 1, 1).detach().to(DEVICE) + 1/d * W
     return torch.matrix_power(x, d)
 
 
@@ -142,10 +142,11 @@ class Trainer:
 
             # dagness loss
             hw = h_W[self.constraint_type](W)  # [m]
-            with torch.no_grad():
-                hw_new = hw.data
-                self.update_lambda_c(hw_new, idx)
-                self.hw_prev[idx] = hw_new
+            if self.train_itr > 500:
+                with torch.no_grad():
+                    hw_new = hw.data
+                    self.update_lambda_c(hw_new, idx)
+                    self.hw_prev[idx] = hw_new
 
             lambda_hw = torch.mean(self.ld[idx].detach() * hw)
 
@@ -162,8 +163,8 @@ class Trainer:
             self.e_optimizer.step()
             self.d_optimizer.step()
 
-            progress_bar.set_description("[Epoch %.2f] [nll: %.3f / %.3f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
-                                         (epoch + float(it + 1) / num_iterations, nll.item(), true_nll, hw.mean().item(),
+            progress_bar.set_description("[Epoch %.2f] [nll: %.3f / %.3f] [l1: %.2f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
+                                         (epoch + float(it + 1) / num_iterations, nll.item(), true_nll, w_l1.item(), hw.mean().item(),
                                           self.ld.mean().item(), self.c.mean().item()) + dsc)
 
             # -----------------
@@ -175,12 +176,19 @@ class Trainer:
                 self.save(self.train_itr)
         return
 
+    def old_update_lambda_c(self, hw_new, idx):
+        # update lambda and c
+        with torch.no_grad():
+            self.ld[idx] += (0.0001 / (self.db.d ** 2)) * hw_new
+            gamma_hw_old = self.hyperparameter['gamma'] * self.hw_prev[idx]
+            self.c[idx] += (self.hyperparameter['eta'] * self.c[idx]) * (hw_new > gamma_hw_old).float()
+
     def update_lambda_c(self, hw_new, idx):
         # update lambda and c
         with torch.no_grad():
-            self.ld[idx] += (1.0 / self.db.d) * hw_new
+            self.ld[idx] += (0.01 / (self.db.d ** 2)) * hw_new
             gamma_hw_old = self.hyperparameter['gamma'] * self.hw_prev[idx]
-            self.c[idx] += (self.hyperparameter['eta'] * self.c[idx] - self.c[idx]) * (hw_new > gamma_hw_old).float()
+            self.c[idx] += (self.hyperparameter['eta'] * self.c[idx]) * (hw_new > gamma_hw_old).float()
 
     def save(self, itr):
 

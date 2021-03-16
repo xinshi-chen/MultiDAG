@@ -52,13 +52,13 @@ cmd_opt.add_argument('-d_optimizer', type=str, default='adam')
 cmd_opt.add_argument('-save_itr', type=int, default=32, help='how many iterations to save the trained states')
 cmd_opt.add_argument('-start_epoch', type=int, default=0)
 
-cmd_opt.add_argument('-hw_type', type=str, default='notears', choices=['notears', 'daggnn'])
+cmd_opt.add_argument('--hw_type', type=str, default='notears', choices=['notears', 'daggnn'])
 
-cmd_opt.add_argument('-rho', type=float, default=0.1)
+cmd_opt.add_argument('-rho', type=float, default=0.0)
 cmd_opt.add_argument('-gamma', type=float, default=1.0)
 cmd_opt.add_argument('-ld', type=float, default=0.001)
 cmd_opt.add_argument('-c', type=float, default=0.001)
-cmd_opt.add_argument('-eta', type=float, default=1.1)
+cmd_opt.add_argument('-eta', type=float, default=0.01)
 
 cmd_opt.add_argument('-num_sample_gen', type=int, default=512, help='number of observed samples for generator during training')
 
