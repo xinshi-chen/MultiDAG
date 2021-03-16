@@ -97,6 +97,16 @@ class Dataset(object):
             with open(data_pkl, 'wb') as f:
                 pkl.dump(self.train_data['data'], f)
 
+        data_pkl = self.data_dir + '/' + self.dataset_hp + '-train-data4test-%d-%d.pkl' % (num_dags, num_sample)
+        if os.path.isfile(data_pkl):
+            with open(data_pkl, 'rb') as f:
+                self.train_data['data4test'] = pkl.load(f)
+        else:
+            self.train_data['data4test'] = self.gen_batch_sample(W=self.train_data['dag'],
+                                                                 n=self.num_sample)
+            with open(data_pkl, 'wb') as f:
+                pkl.dump(self.train_data['data4test'], f)
+
         self.static = dict()
 
     def load_likelihood_function(self, hidden_dims, act, name):

@@ -41,7 +41,7 @@ cmd_opt.add_argument('-learn_sd', type=eval, default=False, help='If false, then
 
 # hyperparameters for training
 cmd_opt.add_argument('-num_dag', type=int, default=64, help='number of DAGs')
-cmd_opt.add_argument('-num_sample', type=int, default=100, help='number of observed samples')
+cmd_opt.add_argument('-num_sample', type=int, default=10, help='number of observed samples')
 cmd_opt.add_argument('-batch_size', type=int, default=32, help='batch size')
 cmd_opt.add_argument('-e_lr', type=float, default=1e-3, help='learning rate of encoder')
 cmd_opt.add_argument('-d_lr', type=float, default=1e-3, help='learning rate of decoder')

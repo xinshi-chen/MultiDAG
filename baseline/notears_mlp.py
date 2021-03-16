@@ -1,13 +1,10 @@
 import torch
-from vae4dag.common.consts import DEVICE, OPTIMIZER
-from vae4dag.trainer import Trainer
-from vae4dag.eval import Eval
 from vae4dag.common.cmd_args import cmd_args
 from vae4dag.data_generator import Dataset
 from vae4dag.dag_utils import is_dag
+from vae4dag.common.utils import weights_init
 import random
 import numpy as np
-from vae4dag.model import Encoder, Decoder
 import torch.nn as nn
 from notears.nonlinear import NotearsMLP, LBFGSBScipy, squared_loss
 from tqdm import tqdm
@@ -73,6 +70,7 @@ def notears_mlp(X, X_test):
     progress_bar = tqdm(range(num_dag))
     for i in progress_bar:
         model = NotearsMLP(dims=[d, 32, 16, 1], bias=True)
+        weights_init(model)
         W_est[i] = notears_nonlinear(model, X[i], lambda1=0.01, lambda2=0.01)
         assert is_dag(W_est[i])
 
@@ -123,8 +121,11 @@ if __name__ == '__main__':
     # ---------------------
 
     X, nll = db.train_data['data']
-    W_est, nll_est = notears_mlp(X, X_test=X)
-    print('NLL true: %.3f, est: %.3f', (nll.mean().item(), nll_est.mean()))
+    X_test, nll_test = db.train_data['data4test']
+    W_est, nll_est = notears_mlp(X, X_test=X_test)
+    print(nll_test)
+    print(nll_est)
+    print('NLL true: %.3f, est: %.3f' % (nll_test.mean().item(), nll_est.mean()))
 
 
 
