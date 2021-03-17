@@ -32,7 +32,7 @@ cmd_opt.add_argument('-g_act', type=str, default='relu')
 
 # hyperparameters for synthetic distribution
 cmd_opt.add_argument('-d', type=int, default=10, help='dimension of RV')
-cmd_opt.add_argument('-num_sample', type=int, default=10, help='number of observed samples')
+cmd_opt.add_argument('-num_sample', type=int, default=20, help='number of observed samples')
 cmd_opt.add_argument('-p', type=float, default=0.5, help='proportion of samples used for structure recovery')
 cmd_opt.add_argument('-num_sample_test', type=int, default=50, help='number of samples for test evaluation')
 
