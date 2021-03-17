@@ -57,7 +57,7 @@ class Encoder(nn.Module):
         # W_ij = u^T tanh(W1 Enc_i + W2 Enc_j)
 
         # Part 5: Threshold
-        self.S = Parameter(torch.ones(size=[d, d]) * 0.1)
+        self.S = Parameter(torch.ones(size=[d, d]) * 0.01)
 
     def forward(self, X):
         """
@@ -87,8 +87,8 @@ class Encoder(nn.Module):
         W = self.pairwise_score(X_pooling)
 
         # Part 5: Take threshold
-        W_hard = hard_threshold(self.S, W)
-        W_approx = diff_hard_threshold(self.S, W, self.k)
+        W_hard = hard_threshold(F.relu(self.S), W)
+        W_approx = diff_hard_threshold(F.relu(self.S), W, self.k)
 
         return (W_hard - W_approx).detach() + W_approx
 

@@ -12,13 +12,13 @@ class Dataset(object):
     """
     synthetic dataset
     """
-    def __init__(self, d, W_sparsity, W_threshold, num_dags, num_sample, f_hidden_dims, f_act, g_hidden_dims=None,
-                 g_act=None, verbose=True):
+    def __init__(self, d, W_sparsity, W_threshold, f_hidden_dims, f_act, g_hidden_dims=None, g_act=None, verbose=True,
+                 num_dags={}):
         """
         :param d: dimension of random variable
         :param W_sparsity, W_threshold: hyperparameters for generating W
         :param num_dags: number of DAGs for training (not observed)
-        :param num_sample: number of samples observed from each training DAG
+        :param num_samples: number of samples observed from each training DAG
 
         X_j = f_j(Pa(X_j)) + Z * g_j(Pa(X_j))
         """
@@ -26,8 +26,8 @@ class Dataset(object):
         self.d = d
         self.W_sparsity = W_sparsity
         self.W_threshold = W_threshold
-        self.train_data = dict()
-
+        self.num_dags = num_dags
+        # self.num_samples = num_samples
         self.hp = 'd-%d-ts-%.2f-sp-%.2f' % (self.d, self.W_threshold, self.W_sparsity)
 
         # ---------------------
@@ -54,17 +54,11 @@ class Dataset(object):
             print('*** SD of Meta Distribution ***')
             print(self.W_sd)
 
-        # generate DAGs for training
-        self.num_dags = num_dags
+        # ---------------------
+        # generate DAGs for train, validation, test
+        # ---------------------
 
-        data_pkl = self.data_dir + '/' + self.hp + '-train-dag-%d.pkl' % num_dags
-        if os.path.isfile(data_pkl):
-            with open(data_pkl, 'rb') as f:
-                self.train_data['dag'] = pkl.load(f)
-        else:
-            self.train_data['dag'] = self.gen_dags(num_dags)
-            with open(data_pkl, 'wb') as f:
-                pkl.dump(self.train_data['dag'], f)
+        self.static_dag = self.get_static_dags()
 
         # ---------------------
         #  Load Likelihood function
@@ -81,33 +75,10 @@ class Dataset(object):
             self.g = None
 
         # ---------------------
-        #  Generate Observations From Training DAGs
+        #  Generate Observations From DAGs for Train, Validation, Test
         # ---------------------
-        self.num_sample = num_sample
 
-        self.dataset_hp = "-".join([self.hp, self.f_hp, self.g_hp])
-        data_pkl = self.data_dir + '/' + self.dataset_hp + '-train-data-%d-%d.pkl' % (num_dags, num_sample)
-
-        if os.path.isfile(data_pkl):
-            with open(data_pkl, 'rb') as f:
-                self.train_data['data'] = pkl.load(f)
-        else:
-            self.train_data['data'] = self.gen_batch_sample(W=self.train_data['dag'],
-                                                            n=self.num_sample)
-            with open(data_pkl, 'wb') as f:
-                pkl.dump(self.train_data['data'], f)
-
-        data_pkl = self.data_dir + '/' + self.dataset_hp + '-train-data4test-%d-%d.pkl' % (num_dags, num_sample)
-        if os.path.isfile(data_pkl):
-            with open(data_pkl, 'rb') as f:
-                self.train_data['data4test'] = pkl.load(f)
-        else:
-            self.train_data['data4test'] = self.gen_batch_sample(W=self.train_data['dag'],
-                                                                 n=self.num_sample)
-            with open(data_pkl, 'wb') as f:
-                pkl.dump(self.train_data['data4test'], f)
-
-        self.static = dict()
+        self.static_data = self.get_static_data()
 
     def load_likelihood_function(self, hidden_dims, act, name):
         dim_list = tuple(map(int, hidden_dims.split("-")))
@@ -152,6 +123,22 @@ class Dataset(object):
                     break
         return W
 
+    def get_static_dags(self):
+        static_dag = dict()
+        for phase in self.num_dags:
+            data_pkl = self.data_dir + '/' + self.hp + '-%s-dag-%d.pkl' % (phase, self.num_dags[phase])
+            if os.path.isfile(data_pkl):
+                with open(data_pkl, 'rb') as f:
+                    static_dag[phase] = pkl.load(f)
+            else:
+                static_dag[phase] = self.gen_dags(self.num_dags[phase])
+                with open(data_pkl, 'wb') as f:
+                    pkl.dump(static_dag[phase], f)
+        return static_dag
+
+    def get_static_data(self):
+        pass
+
     def gen_batch_sample(self, W, n):
 
         assert len(W.shape) == 3
@@ -166,24 +153,28 @@ class Dataset(object):
             X[i, :, :], nll[i] = sampler(W[i], n, self.f, self.g)
         return X.detach(), nll.detach()
 
-    def load_data(self, batch_size, auto_reset=False, shuffle=True, device=None):
+    def load_data(self, batch_size, auto_reset=False, shuffle=True, device=None, phase='train'):
 
-        X, nll = self.train_data['data']
-        idx = torch.arange(0, self.num_dags)
+        if phase != 'train':
+            assert not shuffle
+            assert not auto_reset
+        X, nll = self.static_data[phase]
+        num_dags = X.shape[0]
+        idx = torch.arange(0, num_dags)
 
         while True:
             if shuffle:
-                perms = torch.randperm(self.num_dags)
+                perms = torch.randperm(num_dags)
                 X = X[perms, :, :]
                 idx = idx[perms]
                 nll = nll[perms]
 
-            for pos in range(0, self.num_dags, batch_size):
-                if pos + batch_size > self.num_dags:  # the last mini-batch has fewer samples
+            for pos in range(0, num_dags, batch_size):
+                if pos + batch_size > num_dags:  # the last mini-batch has fewer samples
                     if auto_reset:  # no need to use this last mini-batch
                         break
                     else:
-                        num_samples = self.num_dags - pos
+                        num_samples = num_dags - pos
                 else:
                     num_samples = batch_size
                 if device is None:
@@ -196,37 +187,83 @@ class Dataset(object):
                 break
 
 
+class GenDataset(Dataset):
+    def __init__(self, d, n, W_sparsity, W_threshold, f_hidden_dims, f_act, g_hidden_dims=None, g_act=None, verbose=True,
+                 num_dags={}, num_test=None):
+
+        self.n = n
+        if num_test is None:
+            self.num_test = n
+        else:
+            self.num_test = num_test
+
+        super(GenDataset, self).__init__(d, W_sparsity, W_threshold, f_hidden_dims, f_act, g_hidden_dims, g_act, verbose,
+                                         num_dags)
+
+    def get_static_data(self):
+
+        dataset_hp = [self.hp, self.f_hp, self.g_hp]
+        dataset_hp += list(self.num_dags.values())
+        dataset_hp += [self.n, self.num_test]
+        self.dataset_hp = "-".join(map(str, dataset_hp))
+
+        static_data = dict()
+
+        for phase in self.num_dags:
+
+            data_pkl = self.data_dir + '/' + self.dataset_hp + '-%s.pkl' % phase
+
+            if os.path.isfile(data_pkl):
+                with open(data_pkl, 'rb') as f:
+                    static_data[phase] = pkl.load(f)
+            else:
+                if phase != 'test':
+                    num_samples = self.n
+                else:
+                    num_samples = self.num_test
+                static_data[phase] = self.gen_batch_sample(W=self.static_dag[phase],
+                                                           n=num_samples)
+                with open(data_pkl, 'wb') as f:
+                    pkl.dump(static_data[phase], f)
+
+        return static_data
+
+
 def random_W_V(d, p=0.5):
     # mean
     A_int = (np.random.rand(d, d) < p)
     A = A_int.astype(np.float32)
-    U = np.random.uniform(low=0.1, high=5.0, size=[d, d])
+    U = np.random.uniform(low=5.0, high=20.0, size=[d, d])
     U[np.random.rand(d, d) < 0.5] *= -1
     W = A * U.astype(np.float32)
 
     # sd
-    SD = np.random.rand(d, d).astype(np.float32)
+    SD = np.random.rand(d, d).astype(np.float32) * 5
     # if mean is zero, then make SD small (unlikely to have an edge)
-    SD = SD * 0.1 + (SD * 0.9) * A
+    SD = SD * 0.05 + (SD * 0.95) * A
     return W, SD
 
 
 if __name__ == '__main__':
 
     d = 5
-    num_dags = 10
+    num_dags = 5
     num_sample = 5
     threshold = 0.1
     sparsity = 1.0
 
-    dataset = Dataset(d, sparsity, threshold, num_dags, num_sample, f_hidden_dims='6-1', f_act='relu')
+    dataset = GenDataset(d, num_sample, sparsity, threshold, f_hidden_dims='6-1', f_act='relu',
+                         num_dags={'train': num_dags, 'vali': num_dags, 'test': num_dags}, num_test=num_sample)
     batch_size = 10
     from vae4dag.common.consts import DEVICE
     data_loader = dataset.load_data(batch_size=10, device=DEVICE)
 
+    for dag in dataset.static_dag['train']:
+        print(dag)
+
     iterations = len(range(0, num_dags, batch_size))
     for i in range(iterations):
         data = next(data_loader)
-        x, idx = data
+        x, idx, nll = data
         print(i)
         print(x)
