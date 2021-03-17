@@ -176,7 +176,7 @@ def sampler(W, n, f, g=None):
         X[:, j] = m_j + z[:, j] * sigma_j
         neg_log_likelihood[:, j] = log_z + 0.5 * ((X[:, j] - m_j) / sigma_j) ** 2
 
-    return X, torch.sum(neg_log_likelihood, dim=-1).mean().item()
+    return X, torch.sum(neg_log_likelihood, dim=-1)
 
 
 if __name__ == '__main__':

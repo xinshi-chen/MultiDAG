@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from vae4dag.dag_utils import sampler, is_dag, project_to_dag, run_notears_linear
+from vae4dag.dag_utils import sampler, project_to_dag
 from vae4dag.common.utils import MLP, weights_init
 import os
 import pickle as pkl
@@ -148,7 +148,7 @@ class Dataset(object):
 
         num_dags = W.shape[0]
         X = torch.zeros(size=[num_dags, n, self.d])
-        nll = torch.zeros(size=[num_dags])
+        nll = torch.zeros(size=[num_dags, n])
         for i in range(num_dags):
             X[i, :, :], nll[i] = sampler(W[i], n, self.f, self.g)
         return X.detach(), nll.detach()
