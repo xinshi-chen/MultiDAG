@@ -1,7 +1,7 @@
 import torch
 from vae4dag.common.consts import DEVICE, OPTIMIZER
 from vae4dag.trainer import Trainer
-from vae4dag.eval import Eval
+from vae4dag.eval import Eval, eval_structure
 from vae4dag.common.cmd_args import cmd_args
 from vae4dag.data_generator import GenDataset
 import random
@@ -97,6 +97,16 @@ if __name__ == '__main__':
         # ---------------------
         evaluator = Eval(encoder, decoder, database=db, save_dir=trainer.save_dir, model_dump=trainer.model_dump)
 
-        result = evaluator.eval(evaluator.encoder, evaluator.decoder, db, phase='test', k=trainer.k, verbose=True)
-        print(evaluator.model_dump)
-        print(trainer.save_dir)
+        true_nll_in, nll_in, true_nll_eval, nll_eval, W_est = evaluator.eval(evaluator.encoder, evaluator.decoder, db,
+                                                                             phase='test', k=trainer.k, verbose=True,
+                                                                             return_W=True)
+        # compare structure
+        W_true = db.static_dag['test']
+        result = eval_structure(W_est, W_true)
+        print(result)
+        for key in result:
+            print(key)
+        print(np.array(result[key]).mean())
+
+    print(evaluator.model_dump)
+    print(trainer.save_dir)

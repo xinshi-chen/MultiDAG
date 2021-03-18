@@ -26,7 +26,7 @@ class Eval:
         self.decoder.load_state_dict(torch.load(dump))
 
     @staticmethod
-    def eval(encoder, decoder, database, phase, k, verbose=False):
+    def eval(encoder, decoder, database, phase, k, verbose=False, return_W=False):
 
         with torch.no_grad():
             X, nll = database.static_data[phase]
@@ -48,8 +48,10 @@ class Eval:
             print('NLL true: %.3f, estimated: %.3f' % (true_nll_in, nll_in))
             print('*** On test samples ***')
             print('NLL true: %.3f, estimated: %.3f' % (true_nll_eval, nll_eval))
-
-        return true_nll_in, nll_in, true_nll_eval, nll_eval
+        if return_W:
+            return true_nll_in, nll_in, true_nll_eval, nll_eval, W
+        else:
+            return true_nll_in, nll_in, true_nll_eval, nll_eval
 
     @staticmethod
     def project_W(W, device, verbose):
