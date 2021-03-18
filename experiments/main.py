@@ -98,3 +98,4 @@ if __name__ == '__main__':
         evaluator = Eval(encoder, decoder, database=db, save_dir=trainer.save_dir, model_dump=trainer.model_dump)
 
         result = evaluator.eval(evaluator.encoder, evaluator.decoder, db, phase='test', k=trainer.k, verbose=True)
+        print(evaluator.model_dump)
