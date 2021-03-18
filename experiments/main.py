@@ -106,7 +106,7 @@ if __name__ == '__main__':
         print(result)
         for key in result:
             print(key)
-        print(np.array(result[key]).mean())
+            print(np.array(result[key]).mean())
 
     print(evaluator.model_dump)
     print(trainer.save_dir)
