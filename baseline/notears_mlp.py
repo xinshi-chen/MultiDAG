@@ -9,6 +9,7 @@ import torch.nn as nn
 from notears.nonlinear import NotearsMLP, LBFGSBScipy, squared_loss
 from tqdm import tqdm
 import math
+import pickle as pkl
 
 
 # redefine this function to return the model
@@ -97,7 +98,6 @@ def notears_mlp(X, X_test, model_dump=None):
             dump = model_dump + "-".join(map(str, hidden_dims)) + '-%d.dump' % i
             torch.save(model.state_dict(), dump)
 
-
     return W_est, nll_train, nll_eval
 
 
@@ -147,6 +147,8 @@ if __name__ == '__main__':
     print('*** On test samples ***')
     print('NLL true: %.3f, estimated: %.3f' % (true_nll_eval.mean(), nll_test.mean()))
 
-
+    filename = 'results-notears_mlp-' + db.dataset_hp + '.pkl'
+    with open(filename, 'wb') as f:
+        pkl.dump([W_est, nll_train, nll_test], f)
 
 
