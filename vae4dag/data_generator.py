@@ -111,7 +111,7 @@ class Dataset(object):
         progress_bar = tqdm(range(m))
         for i in progress_bar:
             while True:
-                w_dag, _ = project_to_dag(W[i], sparsity=self.W_sparsity, w_threshold=self.W_threshold, max_iter=10,
+                w_dag, _ = project_to_dag(W[i], sparsity=self.W_sparsity, w_threshold=self.W_threshold, max_iter=50,
                                           h_tol=1e-3, rho_max=1e+16)
                 if w_dag is None:
                     # resample W
@@ -185,6 +185,16 @@ class Dataset(object):
                         detach().to(device), nll[pos : pos + num_samples].detach().to(device)
             if not auto_reset:
                 break
+
+    @staticmethod
+    def shuffle_order_of_sample(X, nll, device=None):
+        assert len(X.shape) == 3
+        n = X.shape[1]
+        assert n == nll.shape[1]
+        perms = torch.randperm(n)
+        if device is not None:
+            perms = perms.to(DEVICE)
+        return X[:, perms, :].detach(), nll[:, perms].detach()
 
 
 class GenDataset(Dataset):
