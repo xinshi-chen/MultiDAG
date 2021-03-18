@@ -201,7 +201,7 @@ class Trainer:
     def update_lambda_c(self, hw_new, idx):
         # update lambda and c
         with torch.no_grad():
-            self.ld[idx] += (0.01 / (self.db.d ** 2)) * hw_new
+            self.ld[idx] += (0.1 / (self.db.d ** 2)) * hw_new
             gamma_hw_old = self.hyperparameter['gamma'] * self.hw_prev[idx]
             self.c[idx] += (self.hyperparameter['eta'] * self.c[idx]) * (hw_new > gamma_hw_old).float()
 

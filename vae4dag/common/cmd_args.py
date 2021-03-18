@@ -62,9 +62,9 @@ cmd_opt.add_argument('--hw_type', type=str, default='notears', choices=['notears
 
 cmd_opt.add_argument('-rho', type=float, default=0.01)
 cmd_opt.add_argument('-gamma', type=float, default=1.0)
-cmd_opt.add_argument('-ld', type=float, default=0.001)
+cmd_opt.add_argument('-ld', type=float, default=0.01)
 cmd_opt.add_argument('-c', type=float, default=0.001)
-cmd_opt.add_argument('-eta', type=float, default=0.1)
+cmd_opt.add_argument('-eta', type=float, default=0.01)
 
 cmd_opt.add_argument('-phase', type=str, default='train')
 
