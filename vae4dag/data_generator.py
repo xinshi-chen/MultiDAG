@@ -106,7 +106,7 @@ class Dataset(object):
         W = np.random.normal(size=(m, self.d, self.d)).astype(np.float32)
         W = W * self.W_sd
         W = W + self.W_mean
-        W = W * (W > self.W_threshold).astype(np.float32)
+        W = W
 
         # project to DAGs sequentially
         progress_bar = tqdm(range(m))
