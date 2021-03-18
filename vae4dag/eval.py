@@ -67,7 +67,7 @@ class Eval:
 from notears.utils import count_accuracy
 
 def eval_structure_1pair(W: np.ndarray, W_true: np.ndarray):
-    results = count_accuracy(W_true, W)
+    results = count_accuracy(W_true, (W>1e-5))
     results['mse'] = np.sqrt(((W_true - W) ** 2).sum())
     return results
 
