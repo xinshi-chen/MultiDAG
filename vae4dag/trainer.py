@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from tqdm import tqdm
 from vae4dag.common.consts import DEVICE
 from vae4dag.eval import Eval
@@ -151,7 +152,7 @@ class Trainer:
 
             # dagness loss
             hw = h_W[self.constraint_type](W)  # [m]
-            if epoch >= 10:
+            if epoch >= 1: #10:
                 with torch.no_grad():
                     hw_new = hw.data
                     self.update_lambda_c(hw_new, idx)
@@ -182,7 +183,7 @@ class Trainer:
             self.train_itr += 1
             last_itr = (self.train_itr == tot_epoch * num_iterations)
             if self.train_itr % self.save_itr == 0:
-                nll_vali, hw_vali = self.valiation(self.k, hw_tol=1e-2)
+                nll_vali, hw_vali = self.valiation(self.k, hw_tol=0.5)
                 if nll_vali is not None:
                     if nll_vali < self.best_vali_nll:
                         self.best_vali_nll = nll_vali
@@ -201,7 +202,7 @@ class Trainer:
     def update_lambda_c(self, hw_new, idx):
         # update lambda and c
         with torch.no_grad():
-            self.ld[idx] += (0.1 / (self.db.d ** 2)) * hw_new
+            self.ld[idx] += (1 / (self.db.d)) * (10 - F.relu(10 - hw_new))
             gamma_hw_old = self.hyperparameter['gamma'] * self.hw_prev[idx]
             self.c[idx] += (self.hyperparameter['eta'] * self.c[idx]) * (hw_new > gamma_hw_old).float()
 
