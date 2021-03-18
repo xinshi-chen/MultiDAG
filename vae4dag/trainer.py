@@ -171,8 +171,8 @@ class Trainer:
             self.e_optimizer.step()
             self.d_optimizer.step()
 
-            progress_bar.set_description("[Epoch %.2f] [nll: %.3f / %.3f] [l1: %.2f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
-                                         (epoch + float(it + 1) / num_iterations, nll_eval.item(), true_nll_eval.mean(),
+            progress_bar.set_description("[Epoch %.2f] [nll: %.3f / %.3f / %.3f] [l1: %.2f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
+                                         (epoch + float(it + 1) / num_iterations, nll_eval.item(), true_nll_eval.mean(), self.best_vali_nll,
                                           w_l1.item(), hw.mean().item(), self.ld.mean().item(), self.c.mean().item()) + dsc)
 
             # -----------------
@@ -212,8 +212,8 @@ class Trainer:
             X_in, true_nll_in = X[:, :k, :], nll[:, :k]
             X_eval, true_nll_eval = X[:, k:, :], nll[:, k:]
 
-            W = self.encoder(X_in)
-            nll_eval = torch.sum(self.decoder.NLL(W, X_eval), dim=-1)  # [m, n-k]
+            W = self.encoder(X_in.to(DEVICE))
+            nll_eval = torch.sum(self.decoder.NLL(W, X_eval.to(DEVICE)), dim=-1)  # [m, n-k]
 
         return nll_eval.mean().item()
 
