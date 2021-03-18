@@ -110,14 +110,17 @@ class Dataset(object):
         # project to DAGs sequentially
         progress_bar = tqdm(range(m))
         for i in progress_bar:
+            num_skipped = 0
             while True:
-                w_dag, _ = project_to_dag(W[i], sparsity=self.W_sparsity, w_threshold=self.W_threshold, max_iter=50,
+                w_dag, _ = project_to_dag(W[i], sparsity=self.W_sparsity, w_threshold=self.W_threshold, max_iter=10,
                                           h_tol=1e-3, rho_max=1e+16)
                 if w_dag is None:
                     # resample W
                     W[i] = np.random.normal(size=(self.d, self.d)).astype(np.float32)
                     W[i] = W[i] * self.W_sd
                     W[i] = W[i] + self.W_mean
+                    num_skipped += 1
+                    progress_bar.set_description('skipped: %d' % num_skipped)
                 else:
                     W[i] = w_dag
                     break
