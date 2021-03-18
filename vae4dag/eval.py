@@ -58,9 +58,9 @@ class Eval:
 
         for i in range(W.shape[0]):
             if not is_dag(W[i].cpu().numpy()):
-                if verbose:
-                    print('%d-th W is not DAG' % i)
                 W_i, _ = project_to_dag(W[i].cpu().numpy(), max_iter=50)
                 assert is_dag(W_i)
+                if verbose:
+                    print('%d-th W is converted to DAG' % i)
                 W[i] = torch.tensor(W_i).to(device)
         return W
