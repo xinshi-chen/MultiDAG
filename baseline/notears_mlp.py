@@ -1,4 +1,5 @@
 import torch
+import os
 from vae4dag.common.cmd_args import cmd_args
 from vae4dag.data_generator import GenDataset
 from vae4dag.dag_utils import is_dag
