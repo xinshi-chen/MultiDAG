@@ -150,7 +150,7 @@ class Trainer:
 
             # dagness loss
             hw = h_W[self.constraint_type](W)  # [m]
-            if self.train_itr > 500:
+            if self.train_itr > 100:
                 with torch.no_grad():
                     hw_new = hw.data
                     self.update_lambda_c(hw_new, idx)
@@ -181,8 +181,8 @@ class Trainer:
             self.train_itr += 1
             last_itr = (self.train_itr == tot_epoch * num_iterations)
             if self.train_itr % self.save_itr == 0:
-                nll_vali = self.eval(self.k, phase='vali')
-                if nll_vali < self.best_vali_nll:
+                nll_vali, hw_vali = self.eval(self.k, phase='vali')
+                if hw_vali < 1e-3 and nll_vali < self.best_vali_nll:
                     self.best_vali_nll = nll_vali
                     self.save(self.train_itr, best=True)
             if last_itr:
@@ -213,9 +213,11 @@ class Trainer:
             X_eval, true_nll_eval = X[:, k:, :], nll[:, k:]
 
             W = self.encoder(X_in.to(DEVICE))
+            hw = h_W[self.constraint_type](W)  # [m]
+
             nll_eval = torch.sum(self.decoder.NLL(W, X_eval.to(DEVICE)), dim=-1)  # [m, n-k]
 
-        return nll_eval.mean().item()
+        return nll_eval.mean().item(), hw.mean().item()
 
     def save(self, itr, best):
 
