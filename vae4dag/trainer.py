@@ -1,6 +1,7 @@
 import torch
 from tqdm import tqdm
 from vae4dag.common.consts import DEVICE
+from vae4dag.eval import Eval
 import os
 import math
 
@@ -181,10 +182,11 @@ class Trainer:
             self.train_itr += 1
             last_itr = (self.train_itr == tot_epoch * num_iterations)
             if self.train_itr % self.save_itr == 0:
-                nll_vali, hw_vali = self.eval(self.k, phase='vali')
-                if hw_vali < 1e-3 and nll_vali < self.best_vali_nll:
-                    self.best_vali_nll = nll_vali
-                    self.save(self.train_itr, best=True)
+                nll_vali, hw_vali = self.valiation(self.k, hw_tol=1e-2)
+                if nll_vali is not None:
+                    if nll_vali < self.best_vali_nll:
+                        self.best_vali_nll = nll_vali
+                        self.save(self.train_itr, best=True)
             if last_itr:
                 self.save(self.train_itr, best=False)
         return
@@ -203,21 +205,24 @@ class Trainer:
             gamma_hw_old = self.hyperparameter['gamma'] * self.hw_prev[idx]
             self.c[idx] += (self.hyperparameter['eta'] * self.c[idx]) * (hw_new > gamma_hw_old).float()
 
-    def eval(self, k, phase='vali'):
+    def valiation(self, k, hw_tol):
         self.encoder.eval()
         self.decoder.eval()
 
         with torch.no_grad():
-            X, nll = self.db.static_data[phase]
+            X, nll = self.db.static_data['vali']
             X_in, true_nll_in = X[:, :k, :], nll[:, :k]
             X_eval, true_nll_eval = X[:, k:, :], nll[:, k:]
 
             W = self.encoder(X_in.to(DEVICE))
-            hw = h_W[self.constraint_type](W)  # [m]
-
-            nll_eval = torch.sum(self.decoder.NLL(W, X_eval.to(DEVICE)), dim=-1)  # [m, n-k]
-
-        return nll_eval.mean().item(), hw.mean().item()
+            hw = h_W[self.constraint_type](W).mean().item()
+            if hw < hw_tol:
+                W = Eval.project_W(W, DEVICE, verbose=False)
+                nll_eval = torch.sum(self.decoder.NLL(W, X_eval.to(DEVICE)), dim=-1)  # [m, n-k]
+                nll_eval = nll_eval.mean().item()
+            else:
+                nll_eval = None
+        return nll_eval, hw
 
     def save(self, itr, best):
 
