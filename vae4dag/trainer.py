@@ -150,7 +150,7 @@ class Trainer:
 
             # dagness loss
             hw = h_W[self.constraint_type](W)  # [m]
-            if self.train_itr > 100:
+            if epoch >= 10:
                 with torch.no_grad():
                     hw_new = hw.data
                     self.update_lambda_c(hw_new, idx)
