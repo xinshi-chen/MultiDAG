@@ -65,42 +65,36 @@ if __name__ == '__main__':
 
     model_dump = "-".join([hp_arch_enc, hp_arch_dec, hp_train]) + '.dump'
 
+
+    # ---------------------
+    #  Optimizer
+    # ---------------------
+
+    e_opt = OPTIMIZER[cmd_args.e_optimizer](encoder.parameters(),
+                                            lr=cmd_args.e_lr,
+                                            weight_decay=cmd_args.weight_decay)
+    d_opt = OPTIMIZER[cmd_args.d_optimizer](decoder.parameters(),
+                                            lr=cmd_args.d_lr,
+                                            weight_decay=cmd_args.weight_decay)
+
+    # ---------------------
+    #  Trainer
+    # ---------------------
+    trainer = Trainer(encoder, decoder, e_opt, d_opt, db, save_dir=cmd_args.save_dir,
+                      model_dump=model_dump, save_itr=cmd_args.save_itr, constraint_type=cmd_args.hw_type,
+                      hyperparameters={'rho': cmd_args.rho,
+                                       'gamma': cmd_args.gamma,
+                                       'lambda': cmd_args.ld,
+                                       'c': cmd_args.c,
+                                       'eta': cmd_args.eta,
+                                       'p': cmd_args.p})
     if cmd_args.phase == 'train':
-        # ---------------------
-        #  Optimizer
-        # ---------------------
-
-        e_opt = OPTIMIZER[cmd_args.e_optimizer](encoder.parameters(),
-                                                lr=cmd_args.e_lr,
-                                                weight_decay=cmd_args.weight_decay)
-        d_opt = OPTIMIZER[cmd_args.d_optimizer](decoder.parameters(),
-                                                lr=cmd_args.d_lr,
-                                                weight_decay=cmd_args.weight_decay)
-
-        # ---------------------
-        #  Trainer
-        # ---------------------
-        trainer = Trainer(encoder, decoder, e_opt, d_opt, db, save_dir=cmd_args.save_dir,
-                          model_dump=model_dump, save_itr=cmd_args.save_itr, constraint_type=cmd_args.hw_type,
-                          hyperparameters={'rho': cmd_args.rho,
-                                           'gamma': cmd_args.gamma,
-                                           'lambda': cmd_args.ld,
-                                           'c': cmd_args.c,
-                                           'eta': cmd_args.eta,
-                                           'p': cmd_args.p})
-
         trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size, start_epoch=cmd_args.start_epoch)
 
-    # if cmd_args.phase == 'test':
-    #     # ---------------------
-    #     #  Eval
-    #     # ---------------------
-    #     evaluator = Eval(database=db, save_dir=cmd_args.save_dir, model_dump=model_dump, save_itr=cmd_args.save_itr, baseline=cmd_args.baseline)
-    #
-    #     result = evaluator.eval(gen_net, m_small=128, m_large=2048,  verbose=True, bw=1.0)
-    #     # print('mmd: ')
-    #     # print(result['mmd'][1])
-    #     print('ce: ')
-    #     print(result['ce'][1])
-    #     print('parameter: ')
-    #     print([x[0] for x in result['parameter'][1]])
+    if cmd_args.phase == 'test':
+        # ---------------------
+        #  Eval
+        # ---------------------
+        evaluator = Eval(encoder, decoder, database=db, save_dir=trainer.save_dir, model_dump=trainer.model_dump)
+
+        result = evaluator.eval(k=trainer.k)
