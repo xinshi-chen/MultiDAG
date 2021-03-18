@@ -196,7 +196,7 @@ class Dataset(object):
         assert n == nll.shape[1]
         perms = torch.randperm(n)
         if device is not None:
-            perms = perms.to(DEVICE)
+            perms = perms.to(device)
         return X[:, perms, :].detach(), nll[:, perms].detach()
 
 
