@@ -87,13 +87,16 @@ if __name__ == '__main__':
         X = X[:, :k, :]
         W = db.static_dag['test']
 
-        Trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=500, batch_size=cmd_args.batch_size)
+        Trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=5, batch_size=cmd_args.batch_size)
 
     # ---------------------
     #  Eval
     # ---------------------
     W_est = encoder(X.to(DEVICE))
-    W_est = Eval.project_W(W, device=DEVICE)
+    print(W_est)
+    W_est = Eval.project_W(W_est, device=DEVICE, verbose=True)
+    print(W)
+    print(W_est)
     # compare structure
 
     result = eval_structure(W_est, W)

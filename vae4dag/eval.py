@@ -56,19 +56,21 @@ class Eval:
 
     @staticmethod
     def project_W(W, device, verbose):
+        if not isinstance(W, np.ndarray):
+            W = W.detach().cpu().numpy()
 
         for i in range(W.shape[0]):
-            if not is_dag(W[i].cpu().numpy()):
+            if not is_dag(W[i]):
                 if verbose:
                     print('%d-th W is not DAG' % i)
-                W_i, _ = project_to_dag(W[i].cpu().numpy(), max_iter=50)
-                W[i] = torch.tensor(W_i).to(device)
-        return W
+                W_i, _ = project_to_dag(W[i], max_iter=50)
+                W[i] = W_i
+        return torch.tensor(W).to(device)
 
 from notears.utils import count_accuracy
 
 def eval_structure_1pair(W: np.ndarray, W_true: np.ndarray):
-    results = count_accuracy(W_true, (W>1e-5))
+    results = count_accuracy(np.abs(W_true)>1e-15, (np.abs(W)>1e-15))
     results['mse'] = np.sqrt(((W_true - W) ** 2).sum())
     return results
 
