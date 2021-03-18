@@ -67,7 +67,7 @@ def project_to_dag_hard(W, sparsity=1.0, max_iter=20, h_tol=1e-3, rho_max=1e+16,
             if is_dag(P):
                 return W, P
         w_threshold = 2 * w_threshold
-
+    print('still not DAG')
     return None, None
 
 
