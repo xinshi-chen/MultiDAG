@@ -87,8 +87,7 @@ if __name__ == '__main__':
         X = X[:, :k, :]
         W = db.static_dag['test']
 
-        Trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=5, batch_size=cmd_args.batch_size)
-
+        Trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=1000, batch_size=cmd_args.batch_size)
     # ---------------------
     #  Eval
     # ---------------------

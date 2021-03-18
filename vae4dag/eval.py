@@ -63,7 +63,7 @@ class Eval:
             if not is_dag(W[i]):
                 if verbose:
                     print('%d-th W is not DAG' % i)
-                W_i, _ = project_to_dag(W[i], max_iter=50)
+                W_i, _ = project_to_dag(W[i], max_iter=50, w_threshold=0.01, sparsity=0.01)
                 W[i] = W_i
         return torch.tensor(W).to(device)
 
