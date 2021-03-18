@@ -19,9 +19,7 @@ if __name__ == '__main__':
     #  Hyperparameters
     # ---------------------
 
-    num_dag = cmd_args.num_dag
     num_sample = cmd_args.num_sample
-    num_sample_gen = cmd_args.num_sample_gen
     threshold = cmd_args.threshold
     sparsity = cmd_args.sparsity
     d = cmd_args.d
