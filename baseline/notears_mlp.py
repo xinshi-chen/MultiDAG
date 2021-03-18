@@ -144,6 +144,7 @@ if __name__ == '__main__':
 
     print('*** On observed samples ***')
     print('NLL true: %.3f, estimated: %.3f' % (true_nll_in.mean(), nll_train.mean()))
+    print('*** On test samples ***')
     print('NLL true: %.3f, estimated: %.3f' % (true_nll_eval.mean(), nll_test.mean()))
 
 
