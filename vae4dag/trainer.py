@@ -158,13 +158,17 @@ class Trainer:
                     self.update_lambda_c(hw_new, idx)
                     self.hw_prev[idx] = hw_new
 
-            lambda_hw = torch.mean(self.ld[idx].detach() * hw)
+            w_l2 = torch.mean((W ** 2).view(m, -1), dim=-1)  # [m]
+
+            lambda_hw = torch.mean(self.ld[idx].detach() * (hw - w_l2))
 
             # dagness - l2 penalty
-            c_hw_2 = torch.mean(0.5 * self.c[idx].detach() * hw * hw)
+            c_hw_2 = torch.mean(0.5 * self.c[idx].detach() * (hw * hw  - w_l2))
 
             # l1 regularization
             w_l1 = torch.mean(torch.sum(torch.abs(W).view(m, -1), dim=-1))
+
+
 
             loss = nll_eval + self.hyperparameter['rho'] * w_l1 + lambda_hw + c_hw_2
 
