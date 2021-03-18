@@ -59,8 +59,7 @@ if __name__ == '__main__':
     f_act = cmd_args.f_act
     decoder = Decoder(d, f_hidden_dims=f_dims, f_act=f_act, learn_sd=False).to(DEVICE)
 
-    hp_train = 'm-%d-n-%d-bs-%d-elr-%.5f-dlr-%.5f' % (cmd_args.num_dag, cmd_args.num_sample, cmd_args.batch_size,
-                                                      cmd_args.e_lr, cmd_args.d_lr)
+    hp_train = 'bs-%d-elr-%.5f-dlr-%.5f' % (cmd_args.batch_size, cmd_args.e_lr, cmd_args.d_lr)
     hp_arch_enc = "-".join([mlp_dim, mlp_act, str(tf_nhead), str(tf_num_stacks), str(tf_ff_dim), tf_act, str(temp)])
     hp_arch_dec = "-".join([f_dims, f_act])
 
