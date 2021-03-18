@@ -36,7 +36,7 @@ class Eval:
             for i in range(W.shape[0]):
                 if not is_dag(W[i].cpu().numpy()):
                     print('%d-th W is not DAG' % i)
-                    W_i, _ = project_to_dag(W[i], max_iter=50)
+                    W_i, _ = project_to_dag(W[i].cpu().numpy(), max_iter=50)
                     W[i] = torch.tensor(W_i).to(DEVICE)
 
             nll_in = torch.sum(self.decoder.NLL(W, X_in.to(DEVICE)), dim=-1)
@@ -46,5 +46,5 @@ class Eval:
         print('NLL true: %.3f, estimated: %.3f' % (true_nll_in.mean(), nll_in.mean()))
         print('*** On test samples ***')
         print('NLL true: %.3f, estimated: %.3f' % (true_nll_eval.mean(), nll_eval.mean()))
-
+        print(self.model_dump)
         return nll_eval.mean()
