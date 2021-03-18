@@ -55,7 +55,7 @@ cmd_opt.add_argument('-weight_decay', type=float, default=1e-5)
 cmd_opt.add_argument('-num_epochs', type=int, default=1000, help='num epochs')
 cmd_opt.add_argument('-e_optimizer', type=str, default='adam')
 cmd_opt.add_argument('-d_optimizer', type=str, default='adam')
-cmd_opt.add_argument('-save_itr', type=int, default=16, help='how many iterations to save the trained states')
+cmd_opt.add_argument('-save_itr', type=int, default=8, help='how many iterations to save the trained states')
 cmd_opt.add_argument('-start_epoch', type=int, default=0)
 
 cmd_opt.add_argument('--hw_type', type=str, default='notears', choices=['notears', 'daggnn'])
