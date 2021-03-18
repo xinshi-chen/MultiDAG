@@ -99,3 +99,4 @@ if __name__ == '__main__':
 
         result = evaluator.eval(evaluator.encoder, evaluator.decoder, db, phase='test', k=trainer.k, verbose=True)
         print(evaluator.model_dump)
+        print(trainer.save_dir)
