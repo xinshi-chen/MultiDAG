@@ -7,6 +7,7 @@ import random
 import numpy as np
 import torch.nn as nn
 from notears.nonlinear import NotearsMLP, LBFGSBScipy, squared_loss
+from vae4dag.eval import eval_structure
 from tqdm import tqdm
 import math
 import pickle as pkl
@@ -136,18 +137,24 @@ if __name__ == '__main__':
     X_in, true_nll_in = X[:, :k, :], nll[:, :k]
     X_eval, true_nll_eval = X[:, k:, :], nll[:, k:]
 
-    model_dump = cmd_args.save_dir + '/notears_mlp-' + db.dataset_hp
-    W_est, nll_train, nll_test = notears_mlp(X=X_in, X_test=X_eval, model_dump=model_dump)
-    print(true_nll_eval)
-    print(nll_test)
+    filename = 'results-notears_mlp-' + db.dataset_hp + '.pkl'
+    if os.path.isfile(filename):
+        with open(filename, 'rb') as f:
+            W_est, nll_train, nll_test = pkl.load(f)
+    else:
+        model_dump = cmd_args.save_dir + '/notears_mlp-' + db.dataset_hp
+        W_est, nll_train, nll_test = notears_mlp(X=X_in, X_test=X_eval, model_dump=model_dump)
+        with open(filename, 'wb') as f:
+            pkl.dump([W_est, nll_train, nll_test], f)
 
     print('*** On observed samples ***')
     print('NLL true: %.3f, estimated: %.3f' % (true_nll_in.mean(), nll_train.mean()))
     print('*** On test samples ***')
     print('NLL true: %.3f, estimated: %.3f' % (true_nll_eval.mean(), nll_test.mean()))
 
-    filename = 'results-notears_mlp-' + db.dataset_hp + '.pkl'
-    with open(filename, 'wb') as f:
-        pkl.dump([W_est, nll_train, nll_test], f)
-
-
+    W_true = db.static_dag['test']
+    result = eval_structure(W_est, W_true)
+    print(result)
+    for key in result:
+        print(key)
+        print(np.array(result[key]).mean())

@@ -61,3 +61,26 @@ class Eval:
                 W_i, _ = project_to_dag(W[i].cpu().numpy(), max_iter=50)
                 W[i] = torch.tensor(W_i).to(device)
         return W
+
+from notears.utils import count_accuracy
+
+def eval_structure_1pair(W: np.ndarray, W_true: np.ndarray):
+    results = count_accuracy(W_true, W)
+    results['mse'] = np.sqrt(((W_true - W) ** 2).sum())
+    return results
+
+def eval_structure(W, W_true):
+
+    if torch.is_tensor(W):
+        W = W.cpu().numpy()
+    if torch.is_tensor(W_true):
+        W_true = W_true.cpu().numpy()
+
+    result = dict()
+    for i in range(W_true.shape[0]):
+        result_i = eval_structure_1pair(W[i], W_true[i])
+        for key in result_i:
+            if key not in result:
+                result[key] = []
+            result[key].append(result_i[key])
+    return result
