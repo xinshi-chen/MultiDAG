@@ -47,6 +47,30 @@ def project_to_dag(W, sparsity=1.0, max_iter=20, h_tol=1e-3, rho_max=1e+16, w_th
     return None, None
 
 
+def project_to_dag_hard(W, sparsity=1.0, max_iter=20, h_tol=1e-3, rho_max=1e+16, w_threshold=0.1):
+    """
+    :param W: (np.ndarray) [d, d] matrix as a general directed graph, not necessarily acyclic
+    :return:
+        W: (np.ndarray) [d, d] approximate projection to DAGs
+        return None if it takes to long to project to DAGs
+    """
+    for _ in range(100):
+        for _ in range(5):  # run at most 5 times
+
+            try:
+                W, P = project_notears(W, sparsity, max_iter, h_tol, rho_max, w_threshold)
+            except ValueError:
+                # in case of some numerical instability error
+                print('numerical error')
+                return None, None
+
+            if is_dag(P):
+                return W, P
+        w_threshold = 2 * w_threshold
+
+    return None, None
+
+
 def is_dag(W: np.ndarray):
     if W is not None:
         G = nx.DiGraph(W)

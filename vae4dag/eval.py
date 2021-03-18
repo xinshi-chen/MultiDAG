@@ -4,7 +4,7 @@ import numpy as np
 from vae4dag.common.consts import DEVICE
 import os
 import pickle as pkl
-from vae4dag.dag_utils import is_dag, project_to_dag
+from vae4dag.dag_utils import is_dag, project_to_dag_hard
 
 
 class Eval:
@@ -34,6 +34,8 @@ class Eval:
             X_eval, true_nll_eval = X[:, k:, :], nll[:, k:]
 
             W = encoder(X_in.to(DEVICE))
+            if torch.isnan(W).any():
+                print('W nan', W)
 
             W = Eval.project_W(W, DEVICE, verbose)
 
@@ -58,6 +60,8 @@ class Eval:
             if not is_dag(W[i].cpu().numpy()):
                 if verbose:
                     print('%d-th W is not DAG' % i)
-                W_i, _ = project_to_dag(W[i].cpu().numpy(), max_iter=50)
+                W_i = None
+                while W_i is None:
+                    W_i, _ = project_to_dag_hard(W[i].cpu().numpy(), max_iter=50)
                 W[i] = torch.tensor(W_i).to(device)
         return W
