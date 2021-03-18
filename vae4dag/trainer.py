@@ -54,7 +54,7 @@ h_W = {'notears': NOTEARS_h_W.apply,
 
 
 class Trainer:
-    def __init__(self, encoder, decoder, e_optimizer, d_optimizer, data_base, num_sample_gen, save_dir, model_dump, save_itr=500,
+    def __init__(self, encoder, decoder, e_optimizer, d_optimizer, data_base, save_dir, model_dump, save_itr=500,
                  constraint_type='notears', hyperparameters={}):
         self.encoder = encoder
         self.decoder = decoder
@@ -63,23 +63,25 @@ class Trainer:
         self.d_optimizer = d_optimizer
         self.train_itr = 0
         self.save_itr = save_itr
-        self.num_sample_gen = num_sample_gen
         self.constraint_type = constraint_type
 
         self.model_dump = model_dump
 
         self.hyperparameter = dict()
-        default = {'rho': 0.1, 'gamma': 0.25, 'lambda': 0.1, 'c': 0.1, 'eta': 5.0}
+        default = {'rho': 0.1, 'gamma': 0.25, 'lambda': 0.1, 'c': 0.1, 'eta': 5.0, 'p': 0.5}
         for key in default:
             if key in hyperparameters:
                 self.hyperparameter[key] = hyperparameters[key]
             else:
                 self.hyperparameter[key] = default[key]
 
+        self.n = data_base.n
+        self.k = math.floor(self.n * self.hyperparameter['p'])
+
         # initialize lambda and c
-        self.ld = torch.ones(size=[self.db.num_dags]).to(DEVICE) * self.hyperparameter['lambda']
-        self.c = torch.ones(size=[self.db.num_dags]).to(DEVICE) * self.hyperparameter['c']
-        self.hw_prev = torch.ones(size=[self.db.num_dags]).to(DEVICE) * math.inf
+        self.ld = torch.ones(size=[self.db.num_dags['train']]).to(DEVICE) * self.hyperparameter['lambda']
+        self.c = torch.ones(size=[self.db.num_dags['train']]).to(DEVICE) * self.hyperparameter['c']
+        self.hw_prev = torch.ones(size=[self.db.num_dags['train']]).to(DEVICE) * math.inf
 
         # make the save_dir with hyperparameter index
         self.save_dir = save_dir + '/' + data_base.dataset_hp
@@ -97,6 +99,8 @@ class Trainer:
         if not os.path.isdir(self.save_dir):
             os.makedirs(self.save_dir)
 
+        self.best_vali_nll = math.inf
+
     def train(self, epochs, batch_size, start_epoch=0):
         """
         training logic
@@ -104,7 +108,7 @@ class Trainer:
 
         if start_epoch > 0:
             completed_epochs = start_epoch
-            num_itr_per_epoch = len(range(0, self.db.num_dags, batch_size))
+            num_itr_per_epoch = len(range(0, self.db.num_dags['train'], batch_size))
             itr = num_itr_per_epoch * completed_epochs
             self.load(itr)
 
@@ -122,12 +126,16 @@ class Trainer:
         data_loader = self.db.load_data(batch_size=batch_size,
                                         auto_reset=False,
                                         shuffle=True,
+                                        phase='train',
                                         device=DEVICE)
-        num_iterations = len(range(0, self.db.num_dags, batch_size))
+        num_iterations = len(range(0, self.db.num_dags['train'], batch_size))
 
         for it, data in enumerate(data_loader):
             X, idx, true_nll = data
-            true_nll = true_nll.mean().item()
+            X, true_nll = self.db.shuffle_order_of_sample(X, true_nll, device=DEVICE)
+
+            X_in, X_eval = X[:, :self.k, :].detach(), X[:, self.k:, :].detach()
+            true_nll_in, true_nll_eval = true_nll[:, :self.k], true_nll[:, self.k:]
 
             m = X.shape[0]  # number of DAGs in this batch
 
@@ -135,10 +143,10 @@ class Trainer:
             self.d_optimizer.zero_grad()
 
             # compute W
-            W = self.encoder(X.to(DEVICE))   # [m, d, d]
+            W = self.encoder(X_in)   # [m, d, d]
 
             # compute neg log likelihood
-            nll = torch.mean(torch.sum(self.decoder.NLL(W, X), -1))  # [1]
+            nll_eval = torch.mean(torch.sum(self.decoder.NLL(W, X_eval), -1))  # [1]
 
             # dagness loss
             hw = h_W[self.constraint_type](W)  # [m]
@@ -156,7 +164,7 @@ class Trainer:
             # l1 regularization
             w_l1 = torch.mean(torch.sum(torch.abs(W).view(m, -1), dim=-1))
 
-            loss = nll + self.hyperparameter['rho'] * w_l1 + lambda_hw + c_hw_2
+            loss = nll_eval + self.hyperparameter['rho'] * w_l1 + lambda_hw + c_hw_2
 
             # backward
             loss.backward()
@@ -164,16 +172,21 @@ class Trainer:
             self.d_optimizer.step()
 
             progress_bar.set_description("[Epoch %.2f] [nll: %.3f / %.3f] [l1: %.2f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
-                                         (epoch + float(it + 1) / num_iterations, nll.item(), true_nll, w_l1.item(), hw.mean().item(),
-                                          self.ld.mean().item(), self.c.mean().item()) + dsc)
+                                         (epoch + float(it + 1) / num_iterations, nll_eval.item(), true_nll_eval.mean(),
+                                          w_l1.item(), hw.mean().item(), self.ld.mean().item(), self.c.mean().item()) + dsc)
 
             # -----------------
-            #  Save
+            #  Validation & Save
             # -----------------
             self.train_itr += 1
             last_itr = (self.train_itr == tot_epoch * num_iterations)
-            if (self.train_itr % self.save_itr == 0) or last_itr:
-                self.save(self.train_itr)
+            if self.train_itr % self.save_itr == 0:
+                nll_vali = self.eval(self.k, phase='vali')
+                if nll_vali < self.best_vali_nll:
+                    self.best_vali_nll = nll_vali
+                    self.save(self.train_itr, best=True)
+            if last_itr:
+                self.save(self.train_itr, best=False)
         return
 
     def old_update_lambda_c(self, hw_new, idx):
@@ -190,9 +203,27 @@ class Trainer:
             gamma_hw_old = self.hyperparameter['gamma'] * self.hw_prev[idx]
             self.c[idx] += (self.hyperparameter['eta'] * self.c[idx]) * (hw_new > gamma_hw_old).float()
 
-    def save(self, itr):
+    def eval(self, k, phase='vali'):
+        self.encoder.eval()
+        self.decoder.eval()
 
-        dump = self.save_dir + '/Itr-%d-' % itr + self.model_dump
+        with torch.no_grad():
+            X, nll = self.db.static_data[phase]
+            X_in, true_nll_in = X[:, :k, :], nll[:, :k]
+            X_eval, true_nll_eval = X[:, k:, :], nll[:, k:]
+
+            W = self.encoder(X_in)
+            nll_eval = torch.sum(self.decoder.NLL(W, X_eval), dim=-1)  # [m, n-k]
+
+        return nll_eval.mean().item()
+
+    def save(self, itr, best):
+
+        if best:
+            key = '/best-'
+        else:
+            key = '/Itr-%d-' % itr
+        dump = self.save_dir + key + self.model_dump
         torch.save(self.encoder.state_dict(), dump)
 
         dump = dump[:-5] + '_decoder.dump'
