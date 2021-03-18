@@ -45,9 +45,9 @@ class Eval:
 
         if verbose:
             print('*** On observed samples ***')
-            print('NLL true: %.3f, estimated: %.3f' % (true_nll_in.mean(), nll_in.mean()))
+            print('NLL true: %.3f, estimated: %.3f' % (true_nll_in, nll_in))
             print('*** On test samples ***')
-            print('NLL true: %.3f, estimated: %.3f' % (true_nll_eval.mean(), nll_eval.mean()))
+            print('NLL true: %.3f, estimated: %.3f' % (true_nll_eval, nll_eval))
 
         return true_nll_in, nll_in, true_nll_eval, nll_eval
 
