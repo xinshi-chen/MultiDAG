@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import numpy as np
 from tqdm import tqdm
 from vae4dag.common.consts import DEVICE
 from vae4dag.eval import Eval
@@ -263,11 +264,11 @@ class Trainer:
         progress_bar = tqdm(range(0, epochs))
         num_iterations = len(range(0, M, batch_size))
 
-        for e in progress_bar:
+        for epoch in progress_bar:
             perms = torch.randperm(M)
             W = W[perms]
             X = X[perms]
-
+            it = 0
             for pos in range(0, M, batch_size):
 
                 num_w = min(batch_size, M-pos)
@@ -284,3 +285,4 @@ class Trainer:
                 optimizer.step()
 
                 progress_bar.set_description("[Epoch %.2f] [loss: %.3f]" % (epoch + float(it + 1) / num_iterations, loss.item()))
+                it += 1

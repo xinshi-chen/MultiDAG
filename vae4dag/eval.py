@@ -75,7 +75,7 @@ def eval_structure_1pair(W: np.ndarray, W_true: np.ndarray):
 def eval_structure(W, W_true):
 
     if torch.is_tensor(W):
-        W = W.cpu().numpy()
+        W = W.detach().cpu().numpy()
     if torch.is_tensor(W_true):
         W_true = W_true.cpu().numpy()
 

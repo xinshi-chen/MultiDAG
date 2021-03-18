@@ -1,4 +1,5 @@
 import torch
+import math
 from vae4dag.common.consts import DEVICE, OPTIMIZER
 from vae4dag.trainer import Trainer
 from vae4dag.eval import Eval, eval_structure
@@ -81,15 +82,17 @@ if __name__ == '__main__':
     #  Trainer
     # ---------------------
     if cmd_args.phase == 'train':
-        X = db.static_data['test']
+        X, _ = db.static_data['test']
+        k = math.floor(db.n * cmd_args.p)
+        X = X[:, :k, :]
         W = db.static_dag['test']
 
-        Trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=100, batch_size=cmd_args.batch_size)
+        Trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=1000, batch_size=cmd_args.batch_size)
 
     # ---------------------
     #  Eval
     # ---------------------
-    W_est = encoder(X)
+    W_est = encoder(X.to(DEVICE))
     # compare structure
 
     result = eval_structure(W_est, W)
