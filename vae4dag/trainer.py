@@ -249,3 +249,38 @@ class Trainer:
         dump = dump[:-5] + '_decoder.dump'
         self.decoder.load_state_dict(torch.load(dump))
 
+    @staticmethod
+    def train_encoder_with_W(encoder, optimizer, X, W, epochs, batch_size):
+        encoder.train()
+
+        if isinstance(W, np.ndarray):
+            W = torch.tensor(W)
+        W = W.to(DEVICE)
+        X = X.to(DEVICE)
+
+        M = W.shape[0]
+
+        progress_bar = tqdm(range(0, epochs))
+        num_iterations = len(range(0, M, batch_size))
+
+        for e in progress_bar:
+            perms = torch.randperm(M)
+            W = W[perms]
+            X = X[perms]
+
+            for pos in range(0, M, batch_size):
+
+                num_w = min(batch_size, M-pos)
+                W_batch = W[pos: pos+num_w]
+                X_batch = X[pos: pos+num_w]
+
+                optimizer.zero_grad()
+
+                # loss
+                W_est = encoder(X_batch.detach())
+                loss = ((W_est - W_batch.detach()) ** 2).view(M, -1).sum(dim=-1).mean()
+
+                loss.backward()
+                optimizer.step()
+
+                progress_bar.set_description("[Epoch %.2f] [loss: %.3f]" % (epoch + float(it + 1) / num_iterations, loss.item()))
