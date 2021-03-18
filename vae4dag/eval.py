@@ -34,8 +34,6 @@ class Eval:
             X_eval, true_nll_eval = X[:, k:, :], nll[:, k:]
 
             W = encoder(X_in.to(DEVICE))
-            if torch.isnan(W).any():
-                print('W nan', W)
 
             W = Eval.project_W(W, DEVICE, verbose)
 
@@ -58,9 +56,8 @@ class Eval:
 
         for i in range(W.shape[0]):
             if not is_dag(W[i].cpu().numpy()):
-                W_i, _ = project_to_dag(W[i].cpu().numpy(), max_iter=50)
-                assert is_dag(W_i)
                 if verbose:
-                    print('%d-th W is converted to DAG' % i)
+                    print('%d-th W is not DAG' % i)
+                W_i, _ = project_to_dag(W[i].cpu().numpy(), max_iter=50)
                 W[i] = torch.tensor(W_i).to(device)
         return W

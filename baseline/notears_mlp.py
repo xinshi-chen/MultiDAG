@@ -122,7 +122,7 @@ if __name__ == '__main__':
 
     print('*** Loading data ***')
     db = GenDataset(d, num_sample, W_sparsity=sparsity, W_threshold=threshold, f_hidden_dims=cmd_args.true_f_hidden_dim,
-                    f_act=cmd_args.true_f_act, g_hidden_dims=None, g_act=None, verbose=True, num_test=cmd_args.num_sample_test,
+                    f_act=cmd_args.true_f_act, g_hidden_dims=None, g_act=None, verbose=True, num_test=None,
                     num_dags={'train': cmd_args.num_train,
                               'vali': cmd_args.num_vali,
                               'test': cmd_args.num_test})
@@ -132,7 +132,6 @@ if __name__ == '__main__':
     # ---------------------
     X, nll = db.static_data['test']
     k = math.floor(num_sample * cmd_args.p)
-    num_eval = cmd_args.num_sample_test - k
 
     X_in, true_nll_in = X[:, :k, :], nll[:, :k]
     X_eval, true_nll_eval = X[:, k:, :], nll[:, k:]

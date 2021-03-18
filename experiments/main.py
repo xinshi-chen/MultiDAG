@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     print('*** Loading data ***')
     db = GenDataset(d, num_sample, W_sparsity=sparsity, W_threshold=threshold, f_hidden_dims=cmd_args.true_f_hidden_dim,
-                    f_act=cmd_args.true_f_act, g_hidden_dims=None, g_act=None, verbose=True, num_test=cmd_args.num_sample_test,
+                    f_act=cmd_args.true_f_act, g_hidden_dims=None, g_act=None, verbose=True, num_test=None,
                     num_dags={'train': cmd_args.num_train,
                               'vali': cmd_args.num_vali,
                               'test': cmd_args.num_test})
