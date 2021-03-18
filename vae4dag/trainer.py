@@ -160,10 +160,10 @@ class Trainer:
 
             w_l1 = torch.sum(torch.abs(W).view(m, -1), dim=-1)  #[m]
 
-            lambda_hw = torch.mean(self.ld[idx].detach() * (hw - w_l1))
+            lambda_hw = torch.mean(self.ld[idx].detach() * (hw - 0.05 * w_l1))
 
             # dagness - l2 penalty
-            c_hw_2 = torch.mean(0.5 * self.c[idx].detach() * (hw * hw  - w_l1))
+            c_hw_2 = torch.mean(0.5 * self.c[idx].detach() * (hw * hw  - 0.05 * w_l1))
 
             # l1 regularization
             w_l1 = w_l1.mean()
@@ -187,7 +187,7 @@ class Trainer:
             self.train_itr += 1
             last_itr = (self.train_itr == tot_epoch * num_iterations)
             if self.train_itr % self.save_itr == 0:
-                nll_vali, hw_vali = self.valiation(self.k, hw_tol=0.5)
+                nll_vali, hw_vali = self.valiation(self.k, hw_tol=5.0)
                 if nll_vali is not None:
                     if nll_vali < self.best_vali_nll:
                         self.best_vali_nll = nll_vali

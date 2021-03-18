@@ -35,8 +35,9 @@ class Eval:
 
             W = encoder(X_in.to(DEVICE))
 
+            print(W)
             W = Eval.project_W(W, DEVICE, verbose)
-
+            print(W)
             nll_in = torch.sum(decoder.NLL(W, X_in.to(DEVICE)), dim=-1)
             nll_eval = torch.sum(decoder.NLL(W, X_eval.to(DEVICE)), dim=-1)  # [m, n-k]
 
