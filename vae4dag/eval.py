@@ -5,6 +5,7 @@ from vae4dag.common.consts import DEVICE
 import os
 import pickle as pkl
 from vae4dag.dag_utils import is_dag, project_to_dag
+from notears.utils import count_accuracy
 
 
 class Eval:
@@ -63,16 +64,16 @@ class Eval:
             if not is_dag(W[i]):
                 if verbose:
                     print('%d-th W is not DAG' % i)
-                W_i, _ = project_to_dag(W[i], max_iter=50, w_threshold=0.01, sparsity=0.01)
+                W_i, _ = project_to_dag(W[i], max_iter=50, w_threshold=0.01, sparsity=0.1)
                 W[i] = W_i
         return torch.tensor(W).to(device)
 
-from notears.utils import count_accuracy
 
 def eval_structure_1pair(W: np.ndarray, W_true: np.ndarray):
     results = count_accuracy(np.abs(W_true)>1e-15, (np.abs(W)>1e-15))
     results['mse'] = np.sqrt(((W_true - W) ** 2).sum())
     return results
+
 
 def eval_structure(W, W_true):
 
