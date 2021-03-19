@@ -66,7 +66,6 @@ if __name__ == '__main__':
 
     model_dump = "-".join([hp_arch_enc, hp_arch_dec, hp_train]) + '.dump'
 
-
     # ---------------------
     #  Optimizer
     # ---------------------
@@ -81,21 +80,24 @@ if __name__ == '__main__':
     # ---------------------
     #  Trainer
     # ---------------------
-    if cmd_args.phase == 'train':
-        X, _ = db.static_data['test']
-        k = math.floor(db.n * cmd_args.p)
-        X = X[:, :k, :]
-        W = db.static_dag['test']
+    X, _ = db.static_data['train']
+    k = math.floor(db.n * cmd_args.p)
+    X = X[:, :k, :]
+    W = db.static_dag['train']
 
-        Trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=1000, batch_size=cmd_args.batch_size)
+    Trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=1000, batch_size=cmd_args.batch_size)
     # ---------------------
     #  Eval
     # ---------------------
-    W_est = encoder(X.to(DEVICE))
-    print(W_est)
-    W_est = Eval.project_W(W_est, device=DEVICE, verbose=True)
-    print(W)
-    print(W_est)
+    with torch.no_grad():
+        X, _ = db.static_data['test']
+        X = X[:, :k, :]
+        W = db.static_dag['test']
+        W_est = encoder(X.to(DEVICE))
+        print(W_est)
+        W_est = Eval.project_W(W_est, device=DEVICE, verbose=True)
+        print(W)
+        print(W_est)
     # compare structure
 
     result = eval_structure(W_est, W)
