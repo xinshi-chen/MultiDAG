@@ -12,6 +12,23 @@ from vae4dag.eval import eval_structure
 from tqdm import tqdm
 import math
 import pickle as pkl
+from vae4dag.dag_utils import trace_expm
+
+
+# reimplement to use a different 'trace_expm'
+class NotearsMLP_new(NotearsMLP):
+    def __init__(self, dims, bias=True):
+        super(NotearsMLP_new, self).__init__(dims, bias)
+
+    def h_func(self):
+        """Constrain 2-norm-squared of fc1 weights along m1 dim to be a DAG"""
+        d = self.dims[0]
+        fc1_weight = self.fc1_pos.weight - self.fc1_neg.weight  # [j * m1, i]
+        fc1_weight = fc1_weight.view(d, -1, d)  # [j, m1, i]
+        A = torch.sum(fc1_weight * fc1_weight, dim=1).t()  # [i, j]
+        h = trace_expm(A) - d  # re-implementation (Zheng et al. 2018)
+
+        return h
 
 
 # redefine this function to return the model
@@ -76,7 +93,7 @@ def notears_mlp(X, X_test, model_dump=None):
     hidden_dims = [d, 32, 16, 1]
 
     for i in progress_bar:
-        model = NotearsMLP(dims=hidden_dims, bias=True)
+        model = NotearsMLP_new(dims=hidden_dims, bias=True)
         weights_init(model)
         W_est[i] = notears_nonlinear(model, X[i], lambda1=0.01, lambda2=0.01)
         assert is_dag(W_est[i])

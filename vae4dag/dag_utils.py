@@ -9,6 +9,28 @@ from tqdm import tqdm
 import math
 
 
+class TraceExpm(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input):
+        """
+        input : A = [d, d] tensor
+        output: tr(e^A)
+        """
+        E_A = torch.matrix_exp(input)
+        tr_E_A = torch.trace(E_A)
+        ctx.save_for_backward(E_A)
+        return tr_E_A
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        E_A, = ctx.saved_tensors
+        grad_input = grad_output * E_A.t()
+        return grad_input
+
+
+trace_expm = TraceExpm.apply
+
+
 def run_notears_linear(X):
     """
     :param X: [m, n, d]
@@ -44,30 +66,6 @@ def project_to_dag(W, sparsity=1.0, max_iter=20, h_tol=1e-3, rho_max=1e+16, w_th
         if is_dag(P):
             return W, P
 
-    return None, None
-
-
-def project_to_dag_hard(W, sparsity=1.0, max_iter=20, h_tol=1e-3, rho_max=1e+16, w_threshold=0.1):
-    """
-    :param W: (np.ndarray) [d, d] matrix as a general directed graph, not necessarily acyclic
-    :return:
-        W: (np.ndarray) [d, d] approximate projection to DAGs
-        return None if it takes to long to project to DAGs
-    """
-    for _ in range(100):
-        for _ in range(5):  # run at most 5 times
-
-            try:
-                W, P = project_notears(W, sparsity, max_iter, h_tol, rho_max, w_threshold)
-            except ValueError:
-                # in case of some numerical instability error
-                print('numerical error')
-                return None, None
-
-            if is_dag(P):
-                return W, P
-        w_threshold = 2 * w_threshold
-    print('still not DAG')
     return None, None
 
 
@@ -112,12 +110,13 @@ def project_notears(X, sparsity=1.0, max_iter=100, h_tol=1e-3, rho_max=1e+16, w_
 
     def _h(W):
         """Evaluate value and gradient of acyclicity constraint."""
-        E = slin.expm(W * W)  # (sZheng et al. 2018)
+
+        # use torch.matrix_exp
+
+        # E = slin.expm(W * W)  # (sZheng et al. 2018)
+        E = torch.matrix_exp(torch.tensor(W * W)).numpy()
         h = np.trace(E) - d
-        #     # A different formulation, slightly faster at the cost of numerical stability
-        #     M = np.eye(d) + W * W / d  # (Yu et al. 2019)
-        #     E = np.linalg.matrix_power(M, d - 1)
-        #     h = (E.T * M).sum() - d
+
         G_h = E.T * W * 2
         return h, G_h
 
