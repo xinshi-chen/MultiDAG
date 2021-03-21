@@ -93,11 +93,17 @@ if __name__ == '__main__':
     # ---------------------
     #  Eval
     # ---------------------
-    evaluator = Eval(encoder, decoder, database=db, save_dir=trainer.save_dir, model_dump=trainer.model_dump)
 
-    true_nll_in, nll_in, true_nll_eval, nll_eval, W_est = evaluator.eval(evaluator.encoder, evaluator.decoder, db,
-                                                                         phase='test', k=trainer.k, verbose=True,
-                                                                         return_W=True)
+    # load model
+    dump = trainer.save_dir + '/best-' + trainer.model_dump
+    encoder.load_state_dict(torch.load(dump))
+
+    dump = dump[:-5] + '_decoder.dump'
+    decoder.load_state_dict(torch.load(dump))
+
+    # evaluate
+    true_nll_in, nll_in, true_nll_eval, nll_eval, W_est = Eval.eval(encoder, decoder, db, phase='test', k=trainer.k,
+                                                                    verbose=True, return_W=True)
     # compare structure
     W_true = db.static_dag['test']
     result = eval_structure(W_est, W_true)
@@ -106,5 +112,5 @@ if __name__ == '__main__':
         print(key)
         print(np.array(result[key]).mean())
 
-    print(evaluator.model_dump)
+    print(trainer.model_dump)
     print(trainer.save_dir)
