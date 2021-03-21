@@ -63,6 +63,7 @@ class Eval:
         if not isinstance(W, np.ndarray):
             W = W.detach().cpu().numpy()
 
+        W = W * (W > w_threshold)
         for i in range(W.shape[0]):
             if not is_dag(W[i]):
                 if verbose:
