@@ -57,7 +57,7 @@ class Eval:
             return true_nll_in, nll_in, true_nll_eval, nll_eval
 
     @staticmethod
-    def project_W(W, device, verbose):
+    def project_W(W, device, verbose, w_threshold=0.01, sparsity=0.1):
         if not isinstance(W, np.ndarray):
             W = W.detach().cpu().numpy()
 
@@ -65,7 +65,7 @@ class Eval:
             if not is_dag(W[i]):
                 if verbose:
                     print('%d-th W is not DAG' % i)
-                W_i, _ = project_to_dag(W[i], max_iter=50, w_threshold=0.01, sparsity=0.1)
+                W_i, _ = project_to_dag(W[i], max_iter=50, w_threshold=w_threshold, sparsity=sparsity)
                 W[i] = W_i
         if device is None:
             return W

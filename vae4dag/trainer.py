@@ -220,7 +220,7 @@ class Trainer:
             W = self.encoder(X_in.to(DEVICE))
             hw = h_W[self.constraint_type](W).mean().item()
             if hw < hw_tol:
-                W = Eval.project_W(W, DEVICE, verbose=False)
+                W = Eval.project_W(W, DEVICE, verbose=False, sparsity=1.0)
                 nll_eval = torch.sum(self.decoder.NLL(W, X_eval.to(DEVICE)), dim=-1)  # [m, n-k]
                 nll_eval = nll_eval.mean().item()
             else:
