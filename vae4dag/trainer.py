@@ -204,9 +204,9 @@ class Trainer:
     def update_lambda_c(self, hw_new, idx):
         # update lambda and c
         with torch.no_grad():
-            self.ld[idx] += (1 / (self.db.d)) * (10 - F.relu(10 - hw_new))   # 1/d * max(hw, 10)
+            self.ld[idx] += 0 # (1 / (self.db.d)) * (10 - F.relu(10 - hw_new))   # 1/d * max(hw, 10)
             gamma_hw_old = self.hyperparameter['gamma'] * self.hw_prev[idx]
-            self.c[idx] += (self.hyperparameter['eta'] * self.c[idx]) * (hw_new > gamma_hw_old).float()
+            self.c[idx] += 0 # (self.hyperparameter['eta'] * self.c[idx]) * (hw_new > gamma_hw_old).float()
 
     def valiation(self, k, hw_tol):
         self.encoder.eval()
