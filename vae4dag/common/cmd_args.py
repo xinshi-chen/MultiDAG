@@ -25,7 +25,7 @@ cmd_opt.add_argument('-temperature', type=float, default=5.0)
 """
 decoder
 """
-cmd_opt.add_argument('-f_hidden_dim', type=str, default='32-1')
+cmd_opt.add_argument('-f_hidden_dim', type=str, default='1-16-1')
 cmd_opt.add_argument('-f_act', type=str, default='relu')
 cmd_opt.add_argument('-g_hidden_dim', type=str, default='16-16-1')
 cmd_opt.add_argument('-g_act', type=str, default='relu')
@@ -38,7 +38,7 @@ cmd_opt.add_argument('-num_sample_test', type=int, default=50, help='number of s
 
 cmd_opt.add_argument('-threshold', type=float, default=0.1)
 cmd_opt.add_argument('-sparsity', type=float, default=1.0, help='l1 penalty coefficient in the projection')
-cmd_opt.add_argument('-true_f_hidden_dim', type=str, default='32-1')
+cmd_opt.add_argument('-true_f_hidden_dim', type=str, default='1-16-1')
 cmd_opt.add_argument('-true_f_act', type=str, default='relu')
 
 cmd_opt.add_argument('-learn_sd', type=eval, default=False, help='If false, then only learn the mean of the meta-distribution, while the variance is given.')
@@ -49,8 +49,8 @@ cmd_opt.add_argument('-num_vali', type=int, default=64, help='number of DAGs')
 cmd_opt.add_argument('-num_test', type=int, default=64, help='number of DAGs')
 
 cmd_opt.add_argument('-batch_size', type=int, default=128, help='batch size')
-cmd_opt.add_argument('-e_lr', type=float, default=1e-4, help='learning rate of encoder')
-cmd_opt.add_argument('-d_lr', type=float, default=1e-4, help='learning rate of decoder')
+cmd_opt.add_argument('-e_lr', type=float, default=1e-3, help='learning rate of encoder')
+cmd_opt.add_argument('-d_lr', type=float, default=1e-3, help='learning rate of decoder')
 cmd_opt.add_argument('-weight_decay', type=float, default=1e-5)
 cmd_opt.add_argument('-num_epochs', type=int, default=1000, help='num epochs')
 cmd_opt.add_argument('-e_optimizer', type=str, default='adam')
