@@ -66,7 +66,10 @@ class Eval:
                     print('%d-th W is not DAG' % i)
                 W_i, _ = project_to_dag(W[i], max_iter=50, w_threshold=0.01, sparsity=0.1)
                 W[i] = W_i
-        return torch.tensor(W).to(device)
+        if device is None:
+            return W
+        else:
+            return torch.tensor(W).to(device)
 
 
 def eval_structure_1pair(W: np.ndarray, W_true: np.ndarray):

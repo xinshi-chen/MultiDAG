@@ -3,6 +3,7 @@ import os
 from vae4dag.common.cmd_args import cmd_args
 from vae4dag.data_generator import GenDataset
 from vae4dag.dag_utils import is_dag
+from vae4dag.eval import Eval
 from vae4dag.common.utils import weights_init
 import random
 import numpy as np
@@ -96,10 +97,8 @@ def notears_mlp(X, X_test, model_dump=None):
         model = NotearsMLP_new(dims=hidden_dims, bias=True)
         weights_init(model)
         W_est[i] = notears_nonlinear(model, X[i], lambda1=0.01, lambda2=0.01)
-        assert is_dag(W_est[i])
 
         # compute likelihood
-
         def get_nll(xx):
             with torch.no_grad():
                 x_mean = model(xx)
@@ -171,6 +170,7 @@ if __name__ == '__main__':
     print('NLL true: %.3f, estimated: %.3f' % (true_nll_eval.mean(), nll_test.mean()))
 
     W_true = db.static_dag['test']
+    W_est = Eval.project_W(W_est, device=None, verbose=True)
     result = eval_structure(W_est, W_true)
     print(result)
     for key in result:
