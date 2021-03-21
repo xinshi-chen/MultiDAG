@@ -25,8 +25,8 @@ cmd_opt.add_argument('-temperature', type=float, default=3.0)
 """
 decoder
 """
-cmd_opt.add_argument('-f_hidden_dim', type=str, default='32-16-1')
-cmd_opt.add_argument('-f_act', type=str, default='relu')
+cmd_opt.add_argument('-f_hidden_dim', type=str, default='16-16-1')
+cmd_opt.add_argument('-f_act', type=str, default='sigmoid')
 cmd_opt.add_argument('-g_hidden_dim', type=str, default='16-16-1')
 cmd_opt.add_argument('-g_act', type=str, default='relu')
 
@@ -39,7 +39,7 @@ cmd_opt.add_argument('-num_sample_test', type=int, default=50, help='number of s
 cmd_opt.add_argument('-threshold', type=float, default=0.1)
 cmd_opt.add_argument('-sparsity', type=float, default=1.0, help='l1 penalty coefficient in the projection')
 cmd_opt.add_argument('-true_f_hidden_dim', type=str, default='16-16-1')
-cmd_opt.add_argument('-true_f_act', type=str, default='relu')
+cmd_opt.add_argument('-true_f_act', type=str, default='sigmoid')
 
 cmd_opt.add_argument('-learn_sd', type=eval, default=False, help='If false, then only learn the mean of the meta-distribution, while the variance is given.')
 
