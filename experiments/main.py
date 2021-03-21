@@ -65,7 +65,6 @@ if __name__ == '__main__':
 
     model_dump = "-".join([hp_arch_enc, hp_arch_dec, hp_train]) + '.dump'
 
-
     # ---------------------
     #  Optimizer
     # ---------------------
@@ -91,22 +90,21 @@ if __name__ == '__main__':
     if cmd_args.phase == 'train':
         trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size, start_epoch=cmd_args.start_epoch)
 
-    if cmd_args.phase == 'test':
-        # ---------------------
-        #  Eval
-        # ---------------------
-        evaluator = Eval(encoder, decoder, database=db, save_dir=trainer.save_dir, model_dump=trainer.model_dump)
+    # ---------------------
+    #  Eval
+    # ---------------------
+    evaluator = Eval(encoder, decoder, database=db, save_dir=trainer.save_dir, model_dump=trainer.model_dump)
 
-        true_nll_in, nll_in, true_nll_eval, nll_eval, W_est = evaluator.eval(evaluator.encoder, evaluator.decoder, db,
-                                                                             phase='test', k=trainer.k, verbose=True,
-                                                                             return_W=True)
-        # compare structure
-        W_true = db.static_dag['test']
-        result = eval_structure(W_est, W_true)
-        print(result)
-        for key in result:
-            print(key)
-            print(np.array(result[key]).mean())
+    true_nll_in, nll_in, true_nll_eval, nll_eval, W_est = evaluator.eval(evaluator.encoder, evaluator.decoder, db,
+                                                                         phase='test', k=trainer.k, verbose=True,
+                                                                         return_W=True)
+    # compare structure
+    W_true = db.static_dag['test']
+    result = eval_structure(W_est, W_true)
+    print(result)
+    for key in result:
+        print(key)
+        print(np.array(result[key]).mean())
 
     print(evaluator.model_dump)
     print(trainer.save_dir)

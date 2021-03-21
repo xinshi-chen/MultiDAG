@@ -159,17 +159,14 @@ class Trainer:
                     self.update_lambda_c(hw_new, idx)
                     self.hw_prev[idx] = hw_new
 
-            w_l1 = torch.sum(torch.abs(W).view(m, -1), dim=-1)  #[m]
-
-            lambda_hw = torch.mean(self.ld[idx].detach() * (hw - 0.05 * w_l1))
+            lambda_hw = torch.mean(self.ld[idx].detach() * hw)  # (hw - 0.05 * w_l1))
 
             # dagness - l2 penalty
-            c_hw_2 = torch.mean(0.5 * self.c[idx].detach() * (hw * hw  - 0.05 * w_l1))
+            c_hw_2 = torch.mean(0.5 * self.c[idx].detach() * (hw * hw))  # - 0.05 * w_l1))
 
             # l1 regularization
+            w_l1 = torch.sum(torch.abs(W).view(m, -1), dim=-1)  #[m]
             w_l1 = w_l1.mean()
-
-
 
             loss = nll_eval + self.hyperparameter['rho'] * w_l1 + lambda_hw + c_hw_2
 
@@ -207,7 +204,7 @@ class Trainer:
     def update_lambda_c(self, hw_new, idx):
         # update lambda and c
         with torch.no_grad():
-            self.ld[idx] += (1 / (self.db.d)) * (10 - F.relu(10 - hw_new))
+            self.ld[idx] += (1 / (self.db.d)) * (10 - F.relu(10 - hw_new))   # 1/d * max(hw, 10)
             gamma_hw_old = self.hyperparameter['gamma'] * self.hw_prev[idx]
             self.c[idx] += (self.hyperparameter['eta'] * self.c[idx]) * (hw_new > gamma_hw_old).float()
 

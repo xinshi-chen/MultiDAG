@@ -35,10 +35,11 @@ class Eval:
             X_eval, true_nll_eval = X[:, k:, :], nll[:, k:]
 
             W = encoder(X_in.to(DEVICE))
-
-            print(W)
+            if verbose:
+                print(W)
             W = Eval.project_W(W, DEVICE, verbose)
-            print(W)
+            if verbose:
+                print(W)
             nll_in = torch.sum(decoder.NLL(W, X_in.to(DEVICE)), dim=-1)
             nll_eval = torch.sum(decoder.NLL(W, X_eval.to(DEVICE)), dim=-1)  # [m, n-k]
 
