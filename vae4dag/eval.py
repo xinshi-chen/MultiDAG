@@ -59,7 +59,7 @@ class Eval:
             return true_nll_in, nll_in, true_nll_eval, nll_eval
 
     @staticmethod
-    def project_W(W, device, verbose, w_threshold=0.01, sparsity=0.1):
+    def project_W(W, device, verbose, w_threshold=0.1, sparsity=0.1):
         if not isinstance(W, np.ndarray):
             W = W.detach().cpu().numpy()
 
