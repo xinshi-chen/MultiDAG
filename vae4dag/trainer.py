@@ -168,7 +168,7 @@ class Trainer:
             w_l1 = torch.sum(torch.abs(W).view(m, -1), dim=-1)  #[m]
             w_l1 = w_l1.mean()
 
-            loss = nll_eval + self.hyperparameter['rho'] * w_l1 + lambda_hw + c_hw_2
+            loss = nll_eval + self.hyperparameter['rho'] * w_l1 #+ lambda_hw + c_hw_2
 
             # backward
             loss.backward()
@@ -185,7 +185,7 @@ class Trainer:
             self.train_itr += 1
             last_itr = (self.train_itr == tot_epoch * num_iterations)
             if self.train_itr % self.save_itr == 0:
-                nll_vali, hw_vali = self.valiation(self.k, hw_tol=5.0)
+                nll_vali, hw_vali = self.valiation(self.k, hw_tol=math.inf)
                 if nll_vali is not None:
                     if nll_vali < self.best_vali_nll:
                         self.best_vali_nll = nll_vali
@@ -219,7 +219,7 @@ class Trainer:
 
             W = self.encoder(X_in.to(DEVICE))
             hw = h_W[self.constraint_type](W).mean().item()
-            if hw < hw_tol:
+            if 1:
                 # W = Eval.project_W(W, DEVICE, verbose=False, sparsity=1.0)
                 nll_eval = torch.sum(self.decoder.NLL(W, X_eval.to(DEVICE)), dim=-1)  # [m, n-k]
                 nll_eval = nll_eval.mean().item()
@@ -254,7 +254,7 @@ class Trainer:
             W = torch.tensor(W)
         W = W.to(DEVICE)
         X = X.to(DEVICE)
-        index = torch.range(0, X.shape[0]).to(DEVICE)
+        index = torch.arange(0, X.shape[0]).to(DEVICE)
 
         M = W.shape[0]
 
@@ -297,7 +297,7 @@ class Trainer:
                 w_l1 = torch.sum(torch.abs(W_est).view(m, -1), dim=-1)  #[m]
                 w_l1 = w_l1.mean()
 
-                loss = loss_mse + self.hyperparameter['rho'] * w_l1 + lambda_hw + c_hw_2
+                loss = loss_mse + self.hyperparameter['rho'] * w_l1 #+ lambda_hw + c_hw_2
 
                 loss.backward()
                 optimizer.step()

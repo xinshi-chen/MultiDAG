@@ -1,4 +1,5 @@
 import torch
+import pdb
 import math
 import numpy as np
 from vae4dag.common.consts import DEVICE
@@ -37,6 +38,7 @@ class Eval:
             W = encoder(X_in.to(DEVICE))
             if verbose:
                 print(W)
+            pdb.set_trace()
             W = Eval.project_W(W, DEVICE, verbose)
             if verbose:
                 print(W)
