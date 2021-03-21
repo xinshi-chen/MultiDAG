@@ -8,6 +8,7 @@ from vae4dag.data_generator import GenDataset
 import random
 import numpy as np
 from vae4dag.model import Encoder, Decoder
+import pdb
 
 
 if __name__ == '__main__':
@@ -85,7 +86,16 @@ if __name__ == '__main__':
     X = X[:, :k, :]
     W = db.static_dag['train']
 
-    Trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=1000, batch_size=cmd_args.batch_size)
+    trainer = Trainer(encoder, decoder, e_opt, d_opt, db, save_dir=cmd_args.save_dir,
+                      model_dump=model_dump, save_itr=cmd_args.save_itr, constraint_type=cmd_args.hw_type,
+                      hyperparameters={'rho': cmd_args.rho,
+                                       'gamma': cmd_args.gamma,
+                                       'lambda': cmd_args.ld,
+                                       'c': cmd_args.c,
+                                       'eta': cmd_args.eta,
+                                       'p': cmd_args.p})
+
+    trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=1000, batch_size=cmd_args.batch_size)
     # ---------------------
     #  Eval
     # ---------------------
@@ -94,6 +104,7 @@ if __name__ == '__main__':
         X = X[:, :k, :]
         W = db.static_dag['test']
         W_est = encoder(X.to(DEVICE))
+        pdb.set_trace()
         print(W_est)
         W_est = Eval.project_W(W_est, device=DEVICE, verbose=True)
         print(W)

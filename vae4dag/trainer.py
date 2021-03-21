@@ -247,14 +247,14 @@ class Trainer:
         dump = dump[:-5] + '_decoder.dump'
         self.decoder.load_state_dict(torch.load(dump))
 
-    @staticmethod
-    def train_encoder_with_W(encoder, optimizer, X, W, epochs, batch_size):
+    def train_encoder_with_W(self, encoder, optimizer, X, W, epochs, batch_size):
         encoder.train()
 
         if isinstance(W, np.ndarray):
             W = torch.tensor(W)
         W = W.to(DEVICE)
         X = X.to(DEVICE)
+        index = torch.range(0, X.shape[0]).to(DEVICE)
 
         M = W.shape[0]
 
@@ -265,21 +265,46 @@ class Trainer:
             perms = torch.randperm(M)
             W = W[perms]
             X = X[perms]
+            index = index[perms]
             it = 0
             for pos in range(0, M, batch_size):
 
                 num_w = min(batch_size, M-pos)
                 W_batch = W[pos: pos+num_w]
                 X_batch = X[pos: pos+num_w]
-
+                idx = index[pos: pos+num_w]
                 optimizer.zero_grad()
 
                 # loss
                 W_est = encoder(X_batch.detach())
-                loss = ((W_est - W_batch.detach()) ** 2).view(M, -1).sum(dim=-1).mean()
+                loss_mse = ((W_est - W_batch.detach()) ** 2).view(M, -1).sum(dim=-1).mean()
+
+                # dagness loss
+                hw = h_W[self.constraint_type](W_est)  # [m]
+                if epoch >= 1: #10:
+                    with torch.no_grad():
+                        hw_new = hw.data
+                        self.update_lambda_c(hw_new, idx)
+                        self.hw_prev[idx] = hw_new
+
+                lambda_hw = torch.mean(self.ld[idx].detach() * hw)  # (hw - 0.05 * w_l1))
+
+                # dagness - l2 penalty
+                c_hw_2 = torch.mean(0.5 * self.c[idx].detach() * (hw * hw))  # - 0.05 * w_l1))
+
+                # l1 regularization
+                m = W_est.shape[0]
+                w_l1 = torch.sum(torch.abs(W_est).view(m, -1), dim=-1)  #[m]
+                w_l1 = w_l1.mean()
+
+                loss = loss_mse + self.hyperparameter['rho'] * w_l1 + lambda_hw + c_hw_2
 
                 loss.backward()
                 optimizer.step()
 
                 progress_bar.set_description("[Epoch %.2f] [loss: %.3f]" % (epoch + float(it + 1) / num_iterations, loss.item()))
                 it += 1
+
+                progress_bar.set_description("[Epoch %.2f] [loss: %.3f] [l1: %.2f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
+                                         (epoch + float(it + 1) / num_iterations, loss_mse.item(),
+                                          w_l1.item(), hw.mean().item(), self.ld.mean().item(), self.c.mean().item()))
