@@ -60,6 +60,7 @@ def project_to_dag(W, sparsity=1.0, max_iter=20, h_tol=1e-3, rho_max=1e+16, w_th
         try:
             W, P = project_notears(W, sparsity, max_iter, h_tol, rho_max, w_threshold)
         except ValueError:
+            print('numerical instability error')
             # in case of some numerical instability error
             return None, None
 
