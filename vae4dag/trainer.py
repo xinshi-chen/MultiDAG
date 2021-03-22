@@ -194,13 +194,6 @@ class Trainer:
                 self.save(self.train_itr, best=False)
         return
 
-    def old_update_lambda_c(self, hw_new, idx):
-        # update lambda and c
-        with torch.no_grad():
-            self.ld[idx] += (0.0001 / (self.db.d ** 2)) * hw_new
-            gamma_hw_old = self.hyperparameter['gamma'] * self.hw_prev[idx]
-            self.c[idx] += (self.hyperparameter['eta'] * self.c[idx]) * (hw_new > gamma_hw_old).float()
-
     def update_lambda_c(self, hw_new, idx):
         # update lambda and c
         with torch.no_grad():
