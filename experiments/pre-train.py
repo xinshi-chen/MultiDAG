@@ -86,6 +86,10 @@ if __name__ == '__main__':
     X = X[:, :k, :]
     W = db.static_dag['train']
 
+    X_vali, _ = db.static_data['vali']
+    X_vali = X_vali[:, :k, :]
+    W_vali = db.static_dag['vali']
+
     trainer = Trainer(encoder, decoder, e_opt, d_opt, db, save_dir=cmd_args.save_dir,
                       model_dump=model_dump, save_itr=cmd_args.save_itr, constraint_type=cmd_args.hw_type,
                       hyperparameters={'rho': cmd_args.rho,
@@ -95,7 +99,7 @@ if __name__ == '__main__':
                                        'eta': cmd_args.eta,
                                        'p': cmd_args.p})
 
-    trainer.train_encoder_with_W(encoder, e_opt, X, W, epochs=1000, batch_size=cmd_args.batch_size)
+    trainer.train_encoder_with_W(encoder, e_opt, X, W, X_vali, W_vali, epochs=1000, batch_size=cmd_args.batch_size)
     # ---------------------
     #  Eval
     # ---------------------
