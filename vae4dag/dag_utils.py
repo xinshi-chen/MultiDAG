@@ -55,7 +55,7 @@ def project_to_dag(W, sparsity=1.0, max_iter=20, h_tol=1e-3, rho_max=1e+16, w_th
         W: (np.ndarray) [d, d] approximate projection to DAGs
         return None if it takes to long to project to DAGs
     """
-    W = W * (W > w_threshold)
+    W = W * (np.abs(W) > w_threshold)
     for _ in range(5):  # run at most 5 times
 
         try:
