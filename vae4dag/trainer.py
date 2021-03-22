@@ -240,13 +240,18 @@ class Trainer:
         dump = dump[:-5] + '_decoder.dump'
         self.decoder.load_state_dict(torch.load(dump))
 
-    def train_encoder_with_W(self, encoder, optimizer, X, W, epochs, batch_size):
+    def train_encoder_with_W(self, encoder, optimizer, X, W, X_vali, W_vali, epochs, batch_size):
         encoder.train()
 
         if isinstance(W, np.ndarray):
             W = torch.tensor(W)
+        if isinstance(W_vali, np.ndarray):
+            W_vali = torch.tensor(W_vali)
+
         W = W.to(DEVICE)
         X = X.to(DEVICE)
+        W_vali = W_vali.to(DEVICE)
+        X_vali = X_vali.to(DEVICE)
         index = torch.arange(0, X.shape[0]).to(DEVICE)
 
         M = W.shape[0]
@@ -254,6 +259,8 @@ class Trainer:
         progress_bar = tqdm(range(0, epochs))
         num_iterations = len(range(0, M, batch_size))
 
+        itr = 0
+        best_vali_loss = math.inf
         for epoch in progress_bar:
             perms = torch.randperm(M)
             W = W[perms]
@@ -295,9 +302,19 @@ class Trainer:
                 loss.backward()
                 optimizer.step()
 
-                progress_bar.set_description("[Epoch %.2f] [loss: %.3f]" % (epoch + float(it + 1) / num_iterations, loss.item()))
+                # validation
+                if itr % self.save_itr == 0:
+                    with torch.no_grad():
+                        W_est_vali = encoder(X_vali.detach())
+                        W_est_vali = Eval.project_W(W_est_vali, DEVICE, verbose=False, sparsity=1.0, max_itr=5)
+                        loss_vali = ((W_est_vali - W_vali) ** 2).view(W_vali.shape[0], -1).sum(dim=-1).mean().item()
+                    if loss_vali < best_vali_loss:
+                        best_vali_loss = loss_vali
+                        dump = self.save_dir + '/pre-train.dump'
+                        torch.save(encoder.state_dict(), dump)
                 it += 1
+                itr += 1
 
-                progress_bar.set_description("[Epoch %.2f] [loss: %.3f] [l1: %.2f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
-                                         (epoch + float(it + 1) / num_iterations, loss_mse.item(),
+                progress_bar.set_description("[Epoch %.2f] [loss: %.3f / %.3f] [l1: %.2f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
+                                         (epoch + float(it + 1) / num_iterations, loss_mse.item(), best_vali_loss,
                                           w_l1.item(), hw.mean().item(), self.ld.mean().item(), self.c.mean().item()))
