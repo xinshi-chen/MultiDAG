@@ -237,7 +237,7 @@ class Trainer:
 
                 # loss
                 W_est = self.encoder(X_batch.detach())
-                loss_mse = ((self.w_dag(idx) - W_batch.detach()) ** 2).view(M, -1).sum(dim=-1).mean()
+                loss_mse = ((self.w_dag(idx) - W_batch.detach()) ** 2).view(len(idx), -1).sum(dim=-1).mean()
 
                 # dagness loss
                 h_wD = h_W[self.constraint_type](self.w_dag(idx))  # [m]
