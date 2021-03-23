@@ -158,6 +158,32 @@ class Decoder(nn.Module):
         return neg_log_likelihood
 
 
+class DecoderLinear:
+    @staticmethod
+    def forward(W, X):
+        """
+        :param W: [batch, d, d] tensor  d1 == d
+        :param X: [batch, n, d] tensor
+        """
+        # batch, n, d = X.shape
+        WX = torch.einsum('bji,bnj->bnij', W, X)  # [batch, n, d, d] tensor
+        mean = torch.sum(WX, dim=-1)  # [batch, n, d]
+
+        return mean
+
+    @staticmethod
+    def NLL(W, X):
+        """
+        negative log likelihood
+        """
+        mean = DecoderLinear.forward(W, X)  # [batch, n, d]
+
+        log_z = 0.5 * math.log(2 * math.pi)
+        neg_log_likelihood = log_z + 0.5 * (X - mean) ** 2  # [batch, n, d]
+
+        return neg_log_likelihood
+
+
 class PairwiseScore(nn.Module):
     def __init__(self, dim_in, act='tanh'):
         super(PairwiseScore, self).__init__()
