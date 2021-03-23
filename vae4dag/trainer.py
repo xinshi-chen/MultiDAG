@@ -4,56 +4,12 @@ import numpy as np
 from tqdm import tqdm
 from vae4dag.common.consts import DEVICE
 from vae4dag.eval import Eval
+from vae4dag.dag_utils import h_W
 import os
 import math
 
 
 D_Loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
-
-
-def matrix_poly(W):
-    m, d = W.shape[0], W.shape[1]
-    x = torch.eye(d).unsqueeze(0).repeat(m, 1, 1).detach().to(DEVICE) + 1/d * W
-    return torch.matrix_power(x, d)
-
-
-def DAGGNN_h_W(W):
-    assert len(W.shape) == 3
-    d = W.shape[1]
-    assert d == W.shape[2]
-    expd_W = matrix_poly(W * W)
-    h_W = torch.einsum('bii->b', expd_W) - d
-    return h_W
-
-
-class NOTEARS_h_W(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input):
-
-        """
-        input: [batch, d, d] tensor containing batch many matrices
-        """
-
-        d = input.shape[1]
-        assert d == input.shape[2]
-        e_W_W = torch.matrix_exp(input * input)
-        tr_e_W_W = torch.einsum('bii->b', e_W_W)  # [batch]
-
-        ctx.save_for_backward(input, e_W_W)
-
-        return tr_e_W_W - d
-
-    @staticmethod
-    def backward(ctx, grad_output):
-
-        input, e_W_W = ctx.saved_tensors
-        m = input.shape[0]
-        grad_input = e_W_W.transpose(-1, -2) * 2 * input  # [batch, d, d]
-        return grad_input * grad_output.view(m, 1, 1)
-
-
-h_W = {'notears': NOTEARS_h_W.apply,
-       'daggnn': DAGGNN_h_W}
 
 
 class Trainer:

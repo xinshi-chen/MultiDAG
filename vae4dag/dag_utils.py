@@ -7,6 +7,72 @@ import torch
 from notears.linear import notears_linear
 from tqdm import tqdm
 import math
+import torch.nn.functional as F
+
+
+def matrix_poly(W):
+    if len(W.shape) == 2:
+        d = W.shape[0]
+        assert d == W.shape[1]
+        x = torch.eye(d).to(DEVICE) + 1/d * W
+        return torch.matrix_power(x, d)
+    elif len(W.shape) == 3:
+        m, d = W.shape[0], W.shape[1]
+        x = torch.eye(d).unsqueeze(0).repeat(m, 1, 1).detach().to(DEVICE) + 1/d * W
+        return torch.matrix_power(x, d)
+    else:
+        raise NotImplementedError('Shape should has length 2 or 3.')
+
+
+def DAGGNN_h_W(W):
+    expd_W = matrix_poly(W * W)
+    if len(W.shape) == 2:
+        h_W = torch.trace(expd_W) - d
+    elif len(W.shape) == 3:
+        h_W = torch.einsum('bii->b', expd_W) - d
+    else:
+        raise NotImplementedError('Shape should has length 2 or 3.')
+    return h_W
+
+
+class NOTEARS_h_W(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input):
+
+        """
+        input: [batch, d, d] tensor containing batch many matrices
+        """
+
+        if len(input.shape) == 2:
+            d = input.shape[0]
+            e_W_W = torch.matrix_exp(input * input)
+            tr_e_W_W = torch.trace(e_W_W)
+        elif len(input.shape) == 3:
+            d = input.shape[1]
+            assert d == input.shape[2]
+            e_W_W = torch.matrix_exp(input * input)
+            tr_e_W_W = torch.einsum('bii->b', e_W_W)  # [batch]
+        else:
+            raise NotImplementedError('Shape should has length 2 or 3.')
+        ctx.save_for_backward(input, e_W_W)
+
+        return tr_e_W_W - d
+
+    @staticmethod
+    def backward(ctx, grad_output):
+
+        input, e_W_W = ctx.saved_tensors
+        if len(input.shape) == 2:
+            grad_input = e_W_W.transpose() * 2 * input
+            return grad_input * grad_output
+        elif len(input.shape) == 3:
+            m = input.shape[0]
+            grad_input = e_W_W.transpose(-1, -2) * 2 * input  # [batch, d, d]
+            return grad_input * grad_output.view(m, 1, 1)
+
+
+h_W = {'notears': NOTEARS_h_W.apply,
+       'daggnn': DAGGNN_h_W}
 
 
 class TraceExpm(torch.autograd.Function):
@@ -211,23 +277,23 @@ if __name__ == '__main__':
     x = np.random.uniform(low=-2, high=2, size=[d, d])
     x[np.abs(x)<threshold] = 0
     print(x)
-    y, p = project_to_dag(x, max_iter=10, w_threshold=threshold, sparsity=sparsity)
-    print('projected')
-    print(y)
-    print(p)
-    print('dagness')
-    print(is_dag(p))
-
-    n = 30
-    mu = np.zeros(d)
-    sigma = np.ones(d)
-    x_np = sampler(y, n, mu, sigma)
-    print(x_np)
-    x_torch = sampler(torch.tensor(y), n, torch.tensor(mu), torch.tensor(sigma))
-    print(x_torch)
-
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    plt.scatter(x_np[:,0], x_np[:,1])
-    plt.scatter(x_torch.detach().numpy()[:,0], x_torch.detach().numpy()[:,1])
-    plt.show()
+    # y, p = project_to_dag(x, max_iter=10, w_threshold=threshold, sparsity=sparsity)
+    # print('projected')
+    # print(y)
+    # print(p)
+    # print('dagness')
+    # print(is_dag(p))
+    #
+    # n = 30
+    # mu = np.zeros(d)
+    # sigma = np.ones(d)
+    # x_np = sampler(y, n, mu, sigma)
+    # print(x_np)
+    # x_torch = sampler(torch.tensor(y), n, torch.tensor(mu), torch.tensor(sigma))
+    # print(x_torch)
+    #
+    # import matplotlib.pyplot as plt
+    # fig = plt.figure()
+    # plt.scatter(x_np[:,0], x_np[:,1])
+    # plt.scatter(x_torch.detach().numpy()[:,0], x_torch.detach().numpy()[:,1])
+    # plt.show()
