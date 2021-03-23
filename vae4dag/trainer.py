@@ -319,7 +319,7 @@ class Trainer:
             # update alpha
             alpha = min(10, alpha * (1 + self.hyperparameter['eta']))
             progress_bar.set_description("[itr %.2f] [loss: %.3f] [w_dis: %.2f] [l1: %.2f] [hwD: %.2f] [ld: %.2f] [af: %.2f]" %
-                                         (it, loss_mse.item(), w_dist.item(), w_l1.item(), h_wD.mean().item(),
+                                         (it, loss_mse, w_dist.item(), w_l1.item(), h_wD.mean().item(),
                                           ld.mean().item(), alpha))
         loss_mse = MSE(w_dag.w, W_vali)
         return loss_mse.item()
