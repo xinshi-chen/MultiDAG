@@ -29,7 +29,7 @@ class Trainer:
         self.model_dump = model_dump
 
         self.hyperparameter = dict()
-        default = {'rho': 0.1, 'alpha': 1.0, 'lambda': 0.1, 'c': 1.0, 'p': 0.5}
+        default = {'rho': 0.1, 'alpha': 1.0, 'lambda': 0.1, 'c': 1.0, 'p': 0.5, 'eta': 0.01}
         for key in default:
             if key in hyperparameters:
                 self.hyperparameter[key] = hyperparameters[key]
@@ -259,6 +259,11 @@ class Trainer:
                 loss.backward()
                 self.e_optimizer.step()
                 self.w_optimizer.step()
+
+                # update lambda
+                self.ld[idx] += (1 / self.db.d) * (10 - F.relu(10 - h_wD))
+                # update alpha
+                self.hyperparameter['alpha'] = min(10, self.hyperparameter['alpha'] * (1 + self.hyperparameter['eta']))
 
                 # validation
 

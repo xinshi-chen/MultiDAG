@@ -102,7 +102,8 @@ if __name__ == '__main__':
                                        'alpha': cmd_args.alpha,
                                        'lambda': cmd_args.ld,
                                        'c': cmd_args.c,
-                                       'p': cmd_args.p})
+                                       'p': cmd_args.p,
+                                       'eta': cmd_args.eta})
     if cmd_args.phase == 'train':
         trainer.train_with_W(X, W, X_vali, W_vali, epochs=1000, batch_size=cmd_args.batch_size)
     # ---------------------
