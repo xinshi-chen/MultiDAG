@@ -288,7 +288,7 @@ class Trainer:
                                          (epoch + float(it + 1) / num_iterations, loss_mse.item(), best_vali_loss,
                                           w_dist.item(), w_l1.item(), h_wD.mean().item(), self.ld.mean().item()))
 
-    def train_with_W_validation(self, X_vali, W_vali, num_itr=10000):
+    def train_with_W_validation(self, X_vali, W_vali, num_itr=1000):
         progress_bar = tqdm(range(0, num_itr))
         w_dag = W_DAG(num_dags=self.db.num_dags['vali'], d=self.db.d).to(DEVICE)
         optimizer = OPTIMIZER[cmd_args.w_optimizer](w_dag.parameters(), lr=cmd_args.w_lr,
@@ -298,18 +298,18 @@ class Trainer:
         m = X_vali.shape[0]
         for it in progress_bar:
             optimizer.zero_grad()
-            loss_mse = MSE(w_dag.w, W_vali)
+            loss_mse = 0.0 # MSE(w_dag.w, W_vali)
             # ||w_dag - w||
             w_est = self.encoder(X_vali).detach()
             w_dist = MSE(w_dag.w, w_est)
-            alpha_w_dist = alpha / (2 * self.db.d) * w_dist
+            # alpha_w_dist = alpha / (2 * self.db.d) * w_dist
             h_wD = h_W[self.constraint_type](w_dag.w)  # [m]
             lambda_h_wD = (ld.detach() * h_wD).mean()
             c_hw_2 = 0.5 * self.hyperparameter['c'] * (h_wD * h_wD).mean()  # dagness - l2 penalty
             w_l1 = torch.sum(torch.abs(w_dag.w).view(m, -1), dim=-1).mean()  #[m]
             rho_w_l1 = self.hyperparameter['rho'] * w_l1
 
-            loss = loss_mse + rho_w_l1 + lambda_h_wD + c_hw_2 + alpha_w_dist
+            loss = loss_mse + rho_w_l1 + lambda_h_wD + c_hw_2 + w_dist # alpha_w_dist
 
             loss.backward()
 
@@ -321,5 +321,5 @@ class Trainer:
             progress_bar.set_description("[itr %.2f] [loss: %.3f] [w_dis: %.2f] [l1: %.2f] [hwD: %.2f] [ld: %.2f] [af: %.2f]" %
                                          (it, loss_mse.item(), w_dist.item(), w_l1.item(), h_wD.mean().item(),
                                           ld.mean().item(), alpha))
-
+        loss_mse = MSE(w_dag.w, W_vali)
         return loss_mse.item()
