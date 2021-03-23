@@ -263,7 +263,7 @@ class Trainer:
                 # update lambda
                 self.ld[idx] += (1 / self.db.d) * (10 - F.relu(10 - h_wD))
                 # update alpha
-                self.hyperparameter['alpha'] = min(10, self.hyperparameter['alpha'] * (1 + self.hyperparameter['eta']))
+                # self.hyperparameter['alpha'] = min(10, self.hyperparameter['alpha'] * (1 + self.hyperparameter['eta']))
 
                 # validation
 
