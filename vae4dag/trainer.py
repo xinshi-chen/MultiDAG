@@ -19,7 +19,7 @@ def MSE(w1, w2):
     assert len(w1.shape) == 3
     assert len(w2.shape) == 3
     m = w1.shape[0]
-    return ((w1 - w2) ** 2).view(m, 1).sum(dim=-1).mean()
+    return ((w1 - w2) ** 2).view(m, -1).sum(dim=-1).mean()
 
 
 class Trainer:
@@ -275,13 +275,14 @@ class Trainer:
                 self.ld[idx] += (1 / self.db.d) * (10 - F.relu(10 - h_wD))
                 # update alpha
                 self.hyperparameter['alpha'] = min(10, self.hyperparameter['alpha'] * (1 + self.hyperparameter['eta']))
+                itr += 1
 
                 # validation
-                vali_loss = self.train_with_W_validation(X_vali, W_vali)
-                if best_vali_loss > vali_loss:
-                    best_vali_loss = vali_loss
+                if itr % self.save_itr == 0:
+                    vali_loss = self.train_with_W_validation(X_vali, W_vali)
+                    if best_vali_loss > vali_loss:
+                        best_vali_loss = vali_loss
                 it += 1
-                itr += 1
 
                 progress_bar.set_description("[Epoch %.2f] [loss: %.3f / %.3f] [w_dis: %.2f] [l1: %.2f] [hwD: %.2f] [ld: %.2f]" %
                                          (epoch + float(it + 1) / num_iterations, loss_mse.item(), best_vali_loss,
@@ -299,12 +300,12 @@ class Trainer:
             loss_mse = MSE(w_dag.w, W_vali)
             # ||w_dag - w||
             w_est = self.encoder(X_vali).detach()
-            w_dist = MSE(self.w_dag.w, w_est)
+            w_dist = MSE(w_dag.w, w_est)
             alpha_w_dist = self.hyperparameter['alpha'] / (2 * self.db.d) * w_dist
-            h_wD = h_W[self.constraint_type](self.w_dag.w)  # [m]
+            h_wD = h_W[self.constraint_type](w_dag.w)  # [m]
             lambda_h_wD = (ld.detach() * h_wD).mean()
             c_hw_2 = 0.5 * self.hyperparameter['c'] * (h_wD * h_wD).mean()  # dagness - l2 penalty
-            w_l1 = torch.sum(torch.abs(self.w_dag.w).view(m, -1), dim=-1).mean()  #[m]
+            w_l1 = torch.sum(torch.abs(w_dag.w).view(m, -1), dim=-1).mean()  #[m]
             rho_w_l1 = self.hyperparameter['rho'] * w_l1
 
             loss = loss_mse + rho_w_l1 + lambda_h_wD + c_hw_2 + alpha_w_dist
