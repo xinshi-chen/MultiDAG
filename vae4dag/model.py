@@ -12,7 +12,7 @@ import math
 class W_DAG(nn.Module):
     def __init__(self, num_dags, d):
         super(W_DAG, self).__init__()
-        self.w = Parameter(torch.tensor(num_dags, d, d))
+        self.w = Parameter(torch.rand(size=[num_dags, d, d]))
         weights_init(self)
 
     def forward(self, idx):

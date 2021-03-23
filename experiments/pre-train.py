@@ -56,7 +56,7 @@ if __name__ == '__main__':
     encoder = Encoder(d, tf_nhead, tf_num_stacks, tf_ff_dim, 0.0, tf_act, mlp_dim, mlp_act).to(DEVICE)
 
     # W_DAG
-    w_dag = W_DAG(db.num_dags, d).to(DEVICE)
+    w_dag = W_DAG(db.num_dags['train'], d).to(DEVICE)
 
     # Decoder
 
