@@ -112,15 +112,17 @@ class Trainer:
             self.e_optimizer.zero_grad()
             if self.d_optimizer is not None:
                 self.d_optimizer.zero_grad()
+            self.w_optimizer.zero_grad()
 
-            loss, h_wD, log = self.get_loss(X_in=X_in.detach(), X_eval=X_eval.detach(), W_D=self.w_dag[idx], ld=self.ld[idx].detach())
+            loss, h_wD, log = self.get_loss(X_in=X_in.detach(), X_eval=X_eval.detach(), W_D=self.w_dag(idx), ld=self.ld[idx].detach())
             loss.backward()
 
             # -----------------
             #  primal step
             # -----------------
             self.e_optimizer.step()
-            self.d_optimizer.step()
+            if self.d_optimizer is not None:
+                self.d_optimizer.step()
             self.w_optimizer.step()
 
             # -----------------
@@ -141,6 +143,11 @@ class Trainer:
             last_itr = (self.train_itr == tot_epoch * num_iterations)
             if self.train_itr % self.save_itr == 0:
                 nll_vali = self.valiation()
+                
+                self.encoder.train()
+                if self.d_optimizer is not None:
+                    self.decoder.train()
+
                 if nll_vali < self.best_vali_nll:
                     self.best_vali_nll = nll_vali
                     self.save(self.train_itr, best=True)
@@ -174,7 +181,7 @@ class Trainer:
 
         loss = loss_nll + rho_w_l1 + lambda_h_wD + c_hw_2 + alpha_w_dist
 
-        log = {'nll': loss_nll.data,
+        log = {'nll': loss_nll,
                'l1': w_l1.item(),
                'hw': h_wD.mean().item(),
                'w_dist': w_dist.item()
@@ -200,11 +207,11 @@ class Trainer:
         alpha = self.alpha
 
         # init W_D as W_est
-        self.w_dag.w.data = self.encoder(X_in).detach()
+        w_dag.w.data = self.encoder(X_in).detach()
 
         for it in progress_bar:
             optimizer.zero_grad()
-            loss, h_wD, log = self.get_loss(X_in=X_in.detach(), X_eval=X_eval.detach, W_D=w_dag.w, ld=ld, phase='vali')
+            loss, h_wD, log = self.get_loss(X_in=X_in.detach(), X_eval=X_eval.detach, W_D=w_dag.w, ld=ld.detach(), phase='vali')
             loss.backward()
             optimizer.step()
             # update lambda
