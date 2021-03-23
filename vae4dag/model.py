@@ -14,10 +14,8 @@ class Encoder(nn.Module):
     X to W
     """
     def __init__(self, d, tf_nhead: int = 8, tf_num_stacks: int = 6, tf_ff_dim: int = 64, tf_dropout: float = 0.0,
-                 tf_act: str = 'relu', mlp_dim: str = '16-16-16', mlp_act='relu', temperature=3.0):
+                 tf_act: str = 'relu', mlp_dim: str = '16-16-16', mlp_act='relu'):
         super(Encoder, self).__init__()
-
-        self.k = temperature
 
         dim_list = tuple(map(int, mlp_dim.split("-")))
         mlp_1st_dim = dim_list[0]
@@ -53,11 +51,14 @@ class Encoder(nn.Module):
         # Part 3: Pooling (no parameters)
 
         # Part 4: Sequence to Matrix
-        self.pairwise_score = PairwiseScore(dim_in=2 * self.mlp_out_dim, act='tanh')
+        # self.pairwise_score = PairwiseScore(dim_in=2 * self.mlp_out_dim, act='tanh')
+        self.pairwise_score_pos = PairwiseScore(dim_in=self.mlp_out_dim, act='tanh')
+        self.pairwise_score_neg = PairwiseScore(dim_in=self.mlp_out_dim, act='tanh')
         # W_ij = u^T tanh(W1 Enc_i + W2 Enc_j)
 
         # Part 5: Threshold
-        self.S = Parameter(torch.ones(size=[d, d]) * 0.01)
+        self.S_pos = Parameter(torch.ones(size=[d, d]) * 0.1)
+        self.S_neg = Parameter(torch.ones(size=[d, d]) * 0.1)
 
     def forward(self, X):
         """
@@ -80,17 +81,26 @@ class Encoder(nn.Module):
 
         # Part 3: Pooling
         mean_pooling = torch.mean(Seq_Enc, dim=1)  # [batch_size, d, self.mlp_out_dim]
-        max_pooling, _ = torch.max(Seq_Enc, dim=1)
-        X_pooling = torch.cat([mean_pooling, max_pooling], dim=-1)  # [batch_size, d, 2 * self.mlp_out_dim]
+        # max_pooling, _ = torch.max(Seq_Enc, dim=1)
+        # X_pooling = torch.cat([mean_pooling, max_pooling], dim=-1)  # [batch_size, d, 2 * self.mlp_out_dim]
 
         # Part 4: Get adjacancy matrix
-        W = self.pairwise_score(X_pooling)
+        # W_ij = u^T tanh(W1 Enc_i + W2 Enc_j)
+
+        W_pos = self.pairwise_score_pos(mean_pooling)
+        W_neg = self.pairwise_score_neg(mean_pooling)
 
         # Part 5: Take threshold
-        W_hard = hard_threshold(F.relu(self.S), W)
-        W_approx = diff_hard_threshold(F.relu(self.S), W, self.k)
+        W_pos = F.relu(F.relu(W_pos) - self.S_pos ** 2)
+        W_neg = F.relu(F.relu(W_neg) - self.S_neg ** 2)
+        W = W_pos - W_neg
 
-        return (W_hard - W_approx).detach() + W_approx
+        # W_hard = hard_threshold(F.relu(self.S), W)
+        # W_approx = diff_hard_threshold(F.relu(self.S), W, self.k)
+        #
+        # return (W_hard - W_approx).detach() + W_approx
+
+        return W
 
 
 class Decoder(nn.Module):
