@@ -31,18 +31,8 @@ class Encoder(nn.Module):
         mlp_1st_dim = dim_list[0]
         self.mlp_out_dim = dim_list[-1]
 
-        # Part 0: First layer of MLP is variable-wise, not shared
-        self.W_1st = Parameter(torch.Tensor(size=[d, mlp_1st_dim]))
-        self.bias_1st = Parameter(torch.Tensor(size=[d, mlp_1st_dim]))
-        self.act_1st = NONLINEARITIES[mlp_act]
-
-        # Part 1: Shared MLP
-
-        mlp_dim = "-".join(map(str, dim_list[1:]))
-        self.mlp = MLP(input_dim=mlp_1st_dim,
-                       hidden_dims=mlp_dim,
-                       nonlinearity=mlp_act,
-                       act_last=None)
+        # Part 1: MLP is variable-wise, not shared across variables
+        self.variable_mlp = MLP_Batch(d=d, input_dim=1, hidden_dims=mlp_dim, nonlinearity=mlp_act, act_last=None)
 
         weights_init(self)
 
@@ -78,24 +68,19 @@ class Encoder(nn.Module):
         assert len(X.shape) == 3
         batch_size, n, d = X.shape[0], X.shape[1], X.shape[2]
 
-        # Part 0: Variable-wise 1st layer
-        XW_b = X.unsqueeze(-1) * self.W_1st + self.bias_1st  # [batch_size, n, d, hidden_dim]
-        H = self.act_1st(XW_b)
-
         # Part 1: MLP (shared layers)
-        X_embed = self.mlp(H)  # size : [batch_size, n, d, out_dim]
+        X_resize = X.view(batch_size * n, d, 1)  # size : [batch_size * n, d, 1]
+        X_embed = self.variable_mlp(X_resize)  # size : [batch_size * n, d, mlp_out_dim]
 
         # Part 2: Seq to Seq (Transformer)
-        X_in = X_embed.view(batch_size * n, d, self.mlp_out_dim).transpose(0, 1)  # [d, batch_size * n, self.mlp_out_dim]
+        X_in = X_embed.transpose(0, 1)  # [d, batch_size * n, mlp_out_dim]
         Seq_Enc = self.tf_encoder(X_in).transpose(0, 1).view(batch_size, n, d, self.mlp_out_dim)
 
         # Part 3: Pooling
         mean_pooling = torch.mean(Seq_Enc, dim=1)  # [batch_size, d, self.mlp_out_dim]
-        # max_pooling, _ = torch.max(Seq_Enc, dim=1)
-        # X_pooling = torch.cat([mean_pooling, max_pooling], dim=-1)  # [batch_size, d, 2 * self.mlp_out_dim]
 
         # Part 4: Get adjacancy matrix
-        # W_ij = u^T tanh(W1 Enc_i + W2 Enc_j)
+        # W_ij = u^T relu(W1 Enc_i + W2 Enc_j)
 
         W_pos = self.pairwise_score_pos(mean_pooling)
         W_neg = self.pairwise_score_neg(mean_pooling)

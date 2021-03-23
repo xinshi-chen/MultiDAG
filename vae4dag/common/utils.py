@@ -137,7 +137,11 @@ class MLP_Batch(nn.Module):
 
     def forward(self, x):
         """
-        x : [batch, d, input_dim] tensor
+        input x : [batch, d, input_dim] tensor
+
+        Use d many MLPs to operate on the d variables seperately
+
+        output x : [batch, d, h] tensor
         """
         for l, W in enumerate(self.W_s):
             x = torch.einsum('bdi,dij->bdj', x, W) + self.bias_s[l]  # X : [batch, d, h]  tensor
