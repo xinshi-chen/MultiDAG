@@ -1,4 +1,5 @@
 import torch
+import pdb
 import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
@@ -247,11 +248,12 @@ class Trainer:
 
                 # l1 regularization
                 m = W_est.shape[0]
-                w_l1 = torch.sum(torch.abs(W_est).view(m, -1), dim=-1).mean()  #[m]
+                # w_l1 = torch.sum(torch.abs(W_est).view(m, -1), dim=-1).mean()  #[m]
+                w_l1 = torch.sum(torch.abs(self.w_dag(idx)).view(m, -1), dim=-1).mean()  #[m]
                 rho_w_l1 = self.hyperparameter['rho'] * w_l1
 
                 # ||w_dag - w||
-                w_dist = ((self.w_dag(idx) - W_est) ** 2).view(m, -1).sum(-1).mean()
+                w_dist = ((self.w_dag(idx) - W_est) ** 2).view(m, -1).sum(dim=-1).mean()
                 alpha_w_dist = self.hyperparameter['alpha'] / (2 * self.db.d) * w_dist
 
                 loss = loss_mse + rho_w_l1 + lambda_h_wD + c_hw_2 + alpha_w_dist
@@ -263,7 +265,7 @@ class Trainer:
                 # update lambda
                 self.ld[idx] += (1 / self.db.d) * (10 - F.relu(10 - h_wD))
                 # update alpha
-                # self.hyperparameter['alpha'] = min(10, self.hyperparameter['alpha'] * (1 + self.hyperparameter['eta']))
+                self.hyperparameter['alpha'] = min(10, self.hyperparameter['alpha'] * (1 + self.hyperparameter['eta']))
 
                 # validation
 
@@ -273,3 +275,5 @@ class Trainer:
                 progress_bar.set_description("[Epoch %.2f] [loss: %.3f / %.3f] [w_dis: %.2f] [l1: %.2f] [hwD: %.2f] [ld: %.2f]" %
                                          (epoch + float(it + 1) / num_iterations, loss_mse.item(), best_vali_loss,
                                           w_dist.item(), w_l1.item(), h_wD.mean().item(), self.ld.mean().item()))
+                if epoch == 500:
+                    pdb.set_trace()

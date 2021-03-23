@@ -62,8 +62,8 @@ class Encoder(nn.Module):
 
         # Part 4: Sequence to Matrix
         # self.pairwise_score = PairwiseScore(dim_in=2 * self.mlp_out_dim, act='tanh')
-        self.pairwise_score_pos = PairwiseScore(dim_in=self.mlp_out_dim, act='tanh')
-        self.pairwise_score_neg = PairwiseScore(dim_in=self.mlp_out_dim, act='tanh')
+        self.pairwise_score_pos = PairwiseScore(dim_in=self.mlp_out_dim, act='relu') # 'tanh')
+        self.pairwise_score_neg = PairwiseScore(dim_in=self.mlp_out_dim, act='relu') #'tanh')
         # W_ij = u^T tanh(W1 Enc_i + W2 Enc_j)
 
         # Part 5: Threshold
