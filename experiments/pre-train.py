@@ -7,7 +7,7 @@ from vae4dag.common.cmd_args import cmd_args
 from vae4dag.data_generator import GenDataset
 import random
 import numpy as np
-from vae4dag.model import Encoder, Decoder
+from vae4dag.model import Encoder, Decoder, W_DAG
 import pdb
 
 
@@ -53,7 +53,10 @@ if __name__ == '__main__':
     tf_act = cmd_args.tf_act
     temp = cmd_args.temperature
 
-    encoder = Encoder(d, tf_nhead, tf_num_stacks, tf_ff_dim, 0.0, tf_act, mlp_dim, mlp_act, temp).to(DEVICE)
+    encoder = Encoder(d, tf_nhead, tf_num_stacks, tf_ff_dim, 0.0, tf_act, mlp_dim, mlp_act).to(DEVICE)
+
+    # W_DAG
+    w_dag = W_DAG(db.num_dags, d).to(DEVICE)
 
     # Decoder
 
@@ -77,6 +80,9 @@ if __name__ == '__main__':
     d_opt = OPTIMIZER[cmd_args.d_optimizer](decoder.parameters(),
                                             lr=cmd_args.d_lr,
                                             weight_decay=cmd_args.weight_decay)
+    w_opt = OPTIMIZER[cmd_args.w_optimizer](w_dag.parameters(),
+                                            lr=cmd_args.w_lr,
+                                            weight_decay=cmd_args.weight_decay)
 
     # ---------------------
     #  Trainer
@@ -90,16 +96,15 @@ if __name__ == '__main__':
     X_vali = X_vali[:, :k, :]
     W_vali = db.static_dag['vali']
 
-    trainer = Trainer(encoder, decoder, e_opt, d_opt, db, save_dir=cmd_args.save_dir,
+    trainer = Trainer(encoder, decoder, w_dag, e_opt, d_opt, w_opt, db, save_dir=cmd_args.save_dir,
                       model_dump=model_dump, save_itr=cmd_args.save_itr, constraint_type=cmd_args.hw_type,
                       hyperparameters={'rho': cmd_args.rho,
-                                       'gamma': cmd_args.gamma,
+                                       'alpha': cmd_args.alpha,
                                        'lambda': cmd_args.ld,
                                        'c': cmd_args.c,
-                                       'eta': cmd_args.eta,
                                        'p': cmd_args.p})
-
-    trainer.train_encoder_with_W(encoder, e_opt, X, W, X_vali, W_vali, epochs=1000, batch_size=cmd_args.batch_size)
+    if cmd_args.phase == 'train':
+        trainer.train_with_W(X, W, X_vali, W_vali, epochs=1000, batch_size=cmd_args.batch_size)
     # ---------------------
     #  Eval
     # ---------------------

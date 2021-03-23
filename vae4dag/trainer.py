@@ -13,13 +13,15 @@ D_Loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
 
 
 class Trainer:
-    def __init__(self, encoder, decoder, e_optimizer, d_optimizer, data_base, save_dir, model_dump, save_itr=500,
-                 constraint_type='notears', hyperparameters={}):
+    def __init__(self, encoder, decoder, w_dag, e_optimizer, d_optimizer, w_optimizer, data_base, save_dir, model_dump,
+                 save_itr=500, constraint_type='notears', hyperparameters={}):
         self.encoder = encoder
         self.decoder = decoder
+        self.w_dag = w_dag
         self.db = data_base
         self.e_optimizer = e_optimizer
         self.d_optimizer = d_optimizer
+        self.w_optimizer = w_optimizer
         self.train_itr = 0
         self.save_itr = save_itr
         self.constraint_type = constraint_type
@@ -27,7 +29,7 @@ class Trainer:
         self.model_dump = model_dump
 
         self.hyperparameter = dict()
-        default = {'rho': 0.1, 'gamma': 0.25, 'lambda': 0.1, 'c': 0.1, 'eta': 5.0, 'p': 0.5}
+        default = {'rho': 0.1, 'alpha': 1.0, 'lambda': 0.1, 'c': 1.0, 'p': 0.5}
         for key in default:
             if key in hyperparameters:
                 self.hyperparameter[key] = hyperparameters[key]
@@ -196,8 +198,9 @@ class Trainer:
         dump = dump[:-5] + '_decoder.dump'
         self.decoder.load_state_dict(torch.load(dump))
 
-    def train_encoder_with_W(self, encoder, optimizer, X, W, X_vali, W_vali, epochs, batch_size):
-        encoder.train()
+    def train_with_W(self, X, W, X_vali, W_vali, epochs, batch_size):
+        self.encoder.train()
+        self.w_dag.train()
 
         if isinstance(W, np.ndarray):
             W = torch.tensor(W)
@@ -229,48 +232,39 @@ class Trainer:
                 W_batch = W[pos: pos+num_w]
                 X_batch = X[pos: pos+num_w]
                 idx = index[pos: pos+num_w]
-                optimizer.zero_grad()
+                self.e_optimizer.zero_grad()
+                self.w_optimizer.zero_grad()
 
                 # loss
-                W_est = encoder(X_batch.detach())
+                W_est = self.encoder(X_batch.detach())
                 loss_mse = ((W_est - W_batch.detach()) ** 2).view(M, -1).sum(dim=-1).mean()
 
                 # dagness loss
-                hw = h_W[self.constraint_type](W_est)  # [m]
-                if epoch >= 1: #10:
-                    with torch.no_grad():
-                        hw_new = hw.data
-                        self.update_lambda_c(hw_new, idx)
-                        self.hw_prev[idx] = hw_new
+                h_wD = h_W[self.constraint_type](self.w_dag(idx))  # [m]
 
-                lambda_hw = torch.mean(self.ld[idx].detach() * hw)  # (hw - 0.05 * w_l1))
-
-                # dagness - l2 penalty
-                c_hw_2 = torch.mean(0.5 * self.c[idx].detach() * (hw * hw))  # - 0.05 * w_l1))
+                lambda_h_wD = (self.ld[idx].detach() * h_wD).mean()
+                c_hw_2 = 0.5 * self.hyperparameter['c'] * (h_wD * h_wD).mean()  # dagness - l2 penalty
 
                 # l1 regularization
                 m = W_est.shape[0]
-                w_l1 = torch.sum(torch.abs(W_est).view(m, -1), dim=-1)  #[m]
-                w_l1 = w_l1.mean()
+                w_l1 = torch.sum(torch.abs(W_est).view(m, -1), dim=-1).mean()  #[m]
+                rho_w_l1 = self.hyperparameter['rho'] * w_l1
 
-                loss = loss_mse + self.hyperparameter['rho'] * w_l1 #+ lambda_hw + c_hw_2
+                # ||w_dag - w||
+                w_dist = ((self.w_dag(idx) - W_est) ** 2).view(m, -1).sum(-1).mean()
+                alpha_w_dist = self.hyperparameter['alpha'] / (2 * self.db.d) * w_dist
+
+                loss = loss_mse + rho_w_l1 + lambda_h_wD + c_hw_2 + alpha_w_dist
 
                 loss.backward()
-                optimizer.step()
+                self.e_optimizer.step()
+                self.w_optimizer.step()
 
                 # validation
-                if itr % self.save_itr == 0:
-                    with torch.no_grad():
-                        W_est_vali = encoder(X_vali.detach())
-                        W_est_vali = Eval.project_W(W_est_vali, DEVICE, verbose=False, sparsity=1.0, max_itr=5)
-                        loss_vali = ((W_est_vali - W_vali) ** 2).view(W_vali.shape[0], -1).sum(dim=-1).mean().item()
-                    if loss_vali < best_vali_loss:
-                        best_vali_loss = loss_vali
-                        dump = self.save_dir + '/pre-train.dump'
-                        torch.save(encoder.state_dict(), dump)
+
                 it += 1
                 itr += 1
 
-                progress_bar.set_description("[Epoch %.2f] [loss: %.3f / %.3f] [l1: %.2f] [hw: %.2f] [ld: %.2f, c: %.2f]" %
+                progress_bar.set_description("[Epoch %.2f] [loss: %.3f / %.3f] [w_dis: %.2f] [l1: %.2f] [hwD: %.2f] [ld: %.2f]" %
                                          (epoch + float(it + 1) / num_iterations, loss_mse.item(), best_vali_loss,
-                                          w_l1.item(), hw.mean().item(), self.ld.mean().item(), self.c.mean().item()))
+                                          w_dist.item(), w_l1.item(), h_wD.mean().item(), self.ld.mean().item()))
