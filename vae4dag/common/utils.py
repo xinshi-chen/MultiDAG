@@ -121,8 +121,8 @@ class MLP_Batch(nn.Module):
         activation_fns = []
 
         for h in hidden_dims:
-            W_s.append(Parameter(torch.Tensor(size=[d, prev_size, h])))
-            bias_s.append(Parameter(torch.Tensor(size=[d, h])))
+            W_s.append(Parameter(torch.rand(size=[d, prev_size, h])))
+            bias_s.append(Parameter(torch.zeros(size=[d, h])))
             prev_size = h
             activation_fns.append(NONLINEARITIES[nonlinearity])
         if act_last is not None:
@@ -132,8 +132,6 @@ class MLP_Batch(nn.Module):
         self.W_s = nn.ParameterList(W_s)
         self.bias_s = nn.ParameterList(bias_s)
         self.activation_fns = nn.ModuleList(activation_fns)
-
-        weights_init(self)
 
     def forward(self, x):
         """
