@@ -288,12 +288,13 @@ class Trainer:
                                          (epoch + float(it + 1) / num_iterations, loss_mse.item(), best_vali_loss,
                                           w_dist.item(), w_l1.item(), h_wD.mean().item(), self.ld.mean().item()))
 
-    def train_with_W_validation(self, X_vali, W_vali, num_itr=1000):
+    def train_with_W_validation(self, X_vali, W_vali, num_itr=10000):
         progress_bar = tqdm(range(0, num_itr))
         w_dag = W_DAG(num_dags=self.db.num_dags['vali'], d=self.db.d).to(DEVICE)
         optimizer = OPTIMIZER[cmd_args.w_optimizer](w_dag.parameters(), lr=cmd_args.w_lr,
                                                     weight_decay=cmd_args.weight_decay)
         ld = torch.ones(size=[self.db.num_dags['vali']]).to(DEVICE) * self.hyperparameter['lambda']
+        alpha = self.hyperparameter['alpha']
         m = X_vali.shape[0]
         for it in progress_bar:
             optimizer.zero_grad()
@@ -301,7 +302,7 @@ class Trainer:
             # ||w_dag - w||
             w_est = self.encoder(X_vali).detach()
             w_dist = MSE(w_dag.w, w_est)
-            alpha_w_dist = self.hyperparameter['alpha'] / (2 * self.db.d) * w_dist
+            alpha_w_dist = alpha / (2 * self.db.d) * w_dist
             h_wD = h_W[self.constraint_type](w_dag.w)  # [m]
             lambda_h_wD = (ld.detach() * h_wD).mean()
             c_hw_2 = 0.5 * self.hyperparameter['c'] * (h_wD * h_wD).mean()  # dagness - l2 penalty
@@ -315,7 +316,10 @@ class Trainer:
             optimizer.step()
             # update lambda
             ld += (1 / self.db.d) * (10 - F.relu(10 - h_wD))
-            progress_bar.set_description("[itr %.2f] [loss: %.3f] [w_dis: %.2f] [l1: %.2f] [hwD: %.2f] [ld: %.2f]" %
-                                         (it, loss_mse.item(), w_dist.item(), w_l1.item(), h_wD.mean().item(), ld.mean().item()))
+            # update alpha
+            alpha = min(10, alpha * (1 + self.hyperparameter['eta']))
+            progress_bar.set_description("[itr %.2f] [loss: %.3f] [w_dis: %.2f] [l1: %.2f] [hwD: %.2f] [ld: %.2f] [af: %.2f]" %
+                                         (it, loss_mse.item(), w_dist.item(), w_l1.item(), h_wD.mean().item(),
+                                          ld.mean().item(), alpha))
 
         return loss_mse.item()
