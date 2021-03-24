@@ -94,6 +94,7 @@ class Trainer:
         self.encoder.train()
         if self.d_optimizer is not None:
             self.decoder.train()
+        self.w_dag.train()
 
         data_loader = self.db.load_data(batch_size=batch_size,
                                         auto_reset=False,
@@ -114,7 +115,8 @@ class Trainer:
                 self.d_optimizer.zero_grad()
             self.w_optimizer.zero_grad()
 
-            loss, h_wD, log = self.get_loss(X_in=X_in.detach(), X_eval=X_eval.detach(), W_D=self.w_dag(idx), ld=self.ld[idx].detach())
+            loss, h_wD, log = self.get_loss(X_in=X_in.detach(), X_eval=X_eval.detach(), W_D=self.w_dag(idx),
+                                            ld=self.ld[idx].detach(), w_dist=False)
             loss.backward()
 
             # -----------------
@@ -155,20 +157,24 @@ class Trainer:
                 self.save(self.train_itr, best=False)
         return
 
-    def get_loss(self, X_in, X_eval, W_D, ld, phase='train'):
+    def get_loss(self, X_in, X_eval, W_D, ld, phase='train', w_dist=True):
 
         # neg-log-likelihood
         if phase == 'train':
             loss_nll = self.decoder.NLL(W_D, X_eval).sum(dim=-1).mean()
         else:
-            loss_nll = 0.0
+            loss_nll = torch.tensor(0.0)
 
         # distance ||W_D - W_est||
-        W_est = self.encoder(X_in)
-        if phase != 'train':
-            W_est = W_est.detach()
-        w_dist = MSE(W_D, W_est)
-        alpha_w_dist = self.alpha / (2 * self.db.d) * w_dist
+        if w_dist:
+            W_est = self.encoder(X_in)
+            if phase != 'train':
+                W_est = W_est.detach()
+            w_dist = MSE(W_D, W_est)
+            alpha_w_dist = self.alpha / (2 * self.db.d) * w_dist
+        else:
+            w_dist = torch.tensor(0.0)
+            alpha_w_dist = w_dist.to(DEVICE)
 
         # dagness constraints
         h_wD = h_W[self.constraint_type](W_D)  # [m]
@@ -181,7 +187,7 @@ class Trainer:
 
         loss = loss_nll + rho_w_l1 + lambda_h_wD + c_hw_2 + alpha_w_dist
 
-        log = {'nll': loss_nll,
+        log = {'nll': loss_nll.item(),
                'l1': w_l1.item(),
                'hw': h_wD.mean().item(),
                'w_dist': w_dist.item()
