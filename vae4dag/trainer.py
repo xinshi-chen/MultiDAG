@@ -145,7 +145,7 @@ class Trainer:
             # -----------------
             #  dual step
             # -----------------
-            self.ld[idx] += (1 / self.db.d) * (10 - F.relu(10 - h_wD.detach()))
+            self.ld[idx] += (1 / self.db.d) * (10 - F.relu(10 - h_wD))
             # update alpha
             self.alpha = min(50, self.alpha * (1 + self.hyperparameter['eta']))
 
@@ -178,6 +178,7 @@ class Trainer:
             W_est = self.encoder(X_in)
             loss_nll = self.decoder.NLL(W_est, X_eval).sum(dim=-1).mean()
             w_l1 = torch.sum(torch.abs(W_est).view(W_est.shape[0], -1), dim=-1).mean()
+            rho_w_l1 = self.hyperparameter['rho'] * w_l1
             h_wD = h_W[self.constraint_type](W_est)
 
             log = {'nll': loss_nll.item(),
@@ -185,7 +186,7 @@ class Trainer:
                    'hw': h_wD.mean().item(),
                    'w_dist': 0.0
                    }
-            return loss_nll, 0.0, log
+            return loss_nll + rho_w_l1, torch.tensor(0.0).to(DEVICE), log
 
         # neg-log-likelihood
         if loss_type == 'projection':
@@ -216,7 +217,7 @@ class Trainer:
                'hw': h_wD.mean().item(),
                'w_dist': w_dist.item()
                }
-        return loss, h_wD, log
+        return loss, h_wD.detach(), log
 
     def valiation(self, num_itr=1000):
         self.encoder.eval()

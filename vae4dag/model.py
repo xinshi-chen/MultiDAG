@@ -12,9 +12,16 @@ import math
 class W_DAG(nn.Module):
     def __init__(self, num_dags, d):
         super(W_DAG, self).__init__()
-        self.w = Parameter(torch.rand(size=[num_dags, d, d]))
+        self.d = d
+        self.m = num_dags
+        self._w = Parameter(torch.rand(size=[num_dags, d, d]))
         weights_init(self)
 
+    @property 
+    def w(self):
+        # make diagonal zero
+        return self._w * (1 - torch.eye(self.d).unsqueeze(0).repeat(self.m, 1, 1).to(DEVICE))
+        
     def forward(self, idx):
         return self.w[idx]
 
@@ -54,7 +61,7 @@ class Encoder(nn.Module):
                                                 dropout=tf_dropout,
                                                 activation=tf_act)
 
-        encoder_norm = LayerNorm(self.mlp_out_dim)
+        encoder_norm = None # LayerNorm(self.mlp_out_dim)
 
         self.tf_encoder = TransformerEncoder(encoder_layer, tf_num_stacks, encoder_norm)
 
@@ -97,18 +104,21 @@ class Encoder(nn.Module):
         # Part 4: Get adjacancy matrix
         # W_ij = u^T tanh(W1 Enc_i + W2 Enc_j)
 
-        W_pos = self.pairwise_score_pos(mean_pooling)
-        W_neg = self.pairwise_score_neg(mean_pooling)
+        W  = self.pairwise_score_pos(mean_pooling)
+        # make diagonal zero
+
+        # W_neg = self.pairwise_score_neg(mean_pooling)
 
         # Part 5: Take threshold
-        W_pos = F.relu(F.relu(W_pos) - self.S_pos ** 2)
-        W_neg = F.relu(F.relu(W_neg) - self.S_neg ** 2)
-        W = W_pos - W_neg
+        # W_pos = F.relu(F.relu(W_pos) - self.S_pos ** 2)
+        # W_neg = F.relu(F.relu(W_neg) - self.S_neg ** 2)
+        # W = W_pos - W_neg
 
         # W_hard = hard_threshold(F.relu(self.S), W)
         # W_approx = diff_hard_threshold(F.relu(self.S), W, self.k)
         #
         # return (W_hard - W_approx).detach() + W_approx
+        W = W * (1 - torch.eye(d).to(DEVICE).unsqueeze(0).repeat(batch_size, 1, 1))
 
         return W
 
