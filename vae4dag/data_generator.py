@@ -22,6 +22,10 @@ class Dataset(object):
 
         X_j = f_j(Pa(X_j)) + Z * g_j(Pa(X_j))
         """
+        if f_hidden_dims is None and g_hidden_dims is None:
+            self.linear = True
+        else:
+            self.linear = False
 
         self.d = d
         self.W_sparsity = W_sparsity
@@ -60,6 +64,10 @@ class Dataset(object):
         print('** Loading Static DAGs')
         self.static_dag = self.get_static_dags()
         print(self.static_dag['train'][0])
+        if self.linear:
+            for phase in self.static_dag:
+                self.static_dag[phase] = self.static_dag[phase] / self.d
+            print(self.static_dag['train'][0])
         # ---------------------
         #  Load Likelihood function
         # ---------------------
