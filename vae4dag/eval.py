@@ -38,7 +38,6 @@ class Eval:
             W = encoder(X_in.to(DEVICE))
             if verbose:
                 print(W)
-            pdb.set_trace()
             W = Eval.project_W(W, DEVICE, verbose)
             if verbose:
                 print(W)
@@ -59,7 +58,7 @@ class Eval:
             return true_nll_in, nll_in, true_nll_eval, nll_eval
 
     @staticmethod
-    def project_W(W, device, verbose, w_threshold=0.1, sparsity=1.0, max_itr=50):
+    def project_W(W, device, verbose, w_threshold=0.01, sparsity=0.01, max_itr=50):
         if not isinstance(W, np.ndarray):
             W = W.detach().cpu().numpy()
 

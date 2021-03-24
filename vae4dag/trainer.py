@@ -21,6 +21,21 @@ def MSE(w1, w2):
     m = w1.shape[0]
     return ((w1 - w2) ** 2).view(m, -1).sum(dim=-1).mean()
 
+def W_dist(w1, w2, norm='l1'):
+    assert len(w1.shape) == 3
+    assert len(w2.shape) == 3
+    m = w1.shape[0]
+
+    if norm == 'l1':
+        d = torch.abs(w1 - w2)
+    elif norm == 'l2':
+        d = (w1 - w2) ** 2
+    else:
+        print('not supported')
+        return 0
+
+    return d.view(m, -1).sum(dim=-1).mean()
+
 
 class Trainer:
     def __init__(self, encoder, decoder, w_dag, e_optimizer, d_optimizer, w_optimizer, data_base, save_dir, model_dump,
@@ -116,7 +131,7 @@ class Trainer:
             self.w_optimizer.zero_grad()
 
             loss, h_wD, log = self.get_loss(X_in=X_in.detach(), X_eval=X_eval.detach(), W_D=self.w_dag(idx),
-                                            ld=self.ld[idx].detach(), w_dist=False)
+                                            ld=self.ld[idx].detach())
             loss.backward()
 
             # -----------------
@@ -132,7 +147,7 @@ class Trainer:
             # -----------------
             self.ld[idx] += (1 / self.db.d) * (10 - F.relu(10 - h_wD.detach()))
             # update alpha
-            self.alpha = min(10, self.alpha * (1 + self.hyperparameter['eta']))
+            self.alpha = min(50, self.alpha * (1 + self.hyperparameter['eta']))
 
             progress_bar.set_description("[Epoch %.2f] [nll: %.3f / %.3f / %.3f] [w_dis: %.2f] [l1: %.2f] [hw: %.2f] [ld: %.2f, ap: %.2f]" %
                                          (epoch + float(it + 1) / num_iterations, log['nll'], true_nll_eval.mean(), self.best_vali_nll,
@@ -170,7 +185,7 @@ class Trainer:
             W_est = self.encoder(X_in)
             if phase != 'train':
                 W_est = W_est.detach()
-            w_dist = MSE(W_D, W_est)
+            w_dist = W_dist(W_D, W_est, 'l1')
             alpha_w_dist = self.alpha / (2 * self.db.d) * w_dist
         else:
             w_dist = torch.tensor(0.0)

@@ -16,7 +16,7 @@ cmd_opt.add_argument('-mlp_hidden_dim', type=str, default='32-32-32')
 cmd_opt.add_argument('-mlp_act', type=str, default='relu')
 # 2. transformer
 cmd_opt.add_argument('-tf_nhead', type=int, default=8)
-cmd_opt.add_argument('-tf_num_stacks', type=int, default=8)
+cmd_opt.add_argument('-tf_num_stacks', type=int, default=1)
 cmd_opt.add_argument('-tf_ff_dim', type=int, default=64)
 cmd_opt.add_argument('-tf_act', type=str, default='relu')
 # 3. threshold
