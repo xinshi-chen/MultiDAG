@@ -226,7 +226,7 @@ def project_notears(X, sparsity=1.0, max_iter=100, h_tol=1e-3, rho_max=1e+16, w_
     return W_est, P
 
 
-def sampler(W, n, f, g=None):
+def sampler(W, n, f=None, g=None):
     """
     sample n samples from the probablistic model defined by W, f, and g
 
@@ -255,7 +255,10 @@ def sampler(W, n, f, g=None):
     for j in ordered_vertices:
 
         WX = W[:, j] * X  # [n, d]
-        m_j = f[j](WX).view(n)  # mean [n]
+        if f is not None:
+            m_j = f[j](WX).view(n)
+        else:
+            m_j = WX.sum(dim=-1)   # linear model
 
         if g is not None:
             sigma_j = torch.abs(g[j](WX).view(n))

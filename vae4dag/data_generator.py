@@ -12,7 +12,7 @@ class Dataset(object):
     """
     synthetic dataset
     """
-    def __init__(self, d, W_sparsity, W_threshold, f_hidden_dims, f_act, g_hidden_dims=None, g_act=None, verbose=True,
+    def __init__(self, d, W_sparsity, W_threshold, f_hidden_dims=None, f_act=None, g_hidden_dims=None, g_act=None, verbose=True,
                  num_dags={}):
         """
         :param d: dimension of random variable
@@ -64,8 +64,12 @@ class Dataset(object):
         #  Load Likelihood function
         # ---------------------
 
-        self.f_hp = "-".join([f_hidden_dims, f_act])
-        self.f = self.load_likelihood_function(f_hidden_dims, f_act, name='mean')
+        if f_hidden_dims is not None:
+            self.f_hp = "-".join([f_hidden_dims, f_act])
+            self.f = self.load_likelihood_function(f_hidden_dims, f_act, name='mean')
+        else:
+            self.f_hp = "linear"
+            self.f = None
 
         if g_hidden_dims is not None:
             self.g_hp = "-".join([g_hidden_dims, g_act])
