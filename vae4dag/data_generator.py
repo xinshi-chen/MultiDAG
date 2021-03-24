@@ -57,17 +57,20 @@ class Dataset(object):
         # ---------------------
         # generate DAGs for train, validation, test
         # ---------------------
-
+        print('** Loading Static DAGs')
         self.static_dag = self.get_static_dags()
-
+        print(self.static_dag['train'][0])
         # ---------------------
         #  Load Likelihood function
         # ---------------------
 
         if f_hidden_dims is not None:
+            print('*** Loading MLP Model ***')
             self.f_hp = "-".join([f_hidden_dims, f_act])
             self.f = self.load_likelihood_function(f_hidden_dims, f_act, name='mean')
         else:
+            print('*** Linear Model ***')
+            assert g_hidden_dims is None
             self.f_hp = "linear"
             self.f = None
 
@@ -81,8 +84,9 @@ class Dataset(object):
         # ---------------------
         #  Generate Observations From DAGs for Train, Validation, Test
         # ---------------------
-
+        print('*** Loading Static Data ***')
         self.static_data = self.get_static_data()
+        print(self.static_data['train'][0])
 
     def load_likelihood_function(self, hidden_dims, act, name):
         dim_list = tuple(map(int, hidden_dims.split("-")))

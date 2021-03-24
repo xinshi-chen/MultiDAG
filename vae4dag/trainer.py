@@ -132,9 +132,9 @@ class Trainer:
             # update alpha
             self.alpha = min(10, self.alpha * (1 + self.hyperparameter['eta']))
 
-            progress_bar.set_description("[Epoch %.2f] [nll: %.3f / %.3f / %.3f] [l1: %.2f] [hw: %.2f] [ld: %.2f, ap: %.2f]" %
+            progress_bar.set_description("[Epoch %.2f] [nll: %.3f / %.3f / %.3f] [w_dis: %.2f] [l1: %.2f] [hw: %.2f] [ld: %.2f, ap: %.2f]" %
                                          (epoch + float(it + 1) / num_iterations, log['nll'], true_nll_eval.mean(), self.best_vali_nll,
-                                          log['l1'], log['hw'], self.ld.mean().item(), self.alpha) + dsc)
+                                          log['w_dist'], log['l1'], log['hw'], self.ld.mean().item(), self.alpha) + dsc)
 
             # -----------------
             #  Validation & Save
