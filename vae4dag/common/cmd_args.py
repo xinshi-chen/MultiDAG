@@ -12,7 +12,7 @@ cmd_opt.add_argument('-seed', type=int, default=999983, help='seed')
 encoder
 """
 # 1. mlp
-cmd_opt.add_argument('-mlp_hidden_dim', type=str, default='32-32-32')
+cmd_opt.add_argument('-mlp_hidden_dim', type=str, default='8-8')
 cmd_opt.add_argument('-mlp_act', type=str, default='relu')
 # 2. transformer
 cmd_opt.add_argument('-tf_nhead', type=int, default=8)

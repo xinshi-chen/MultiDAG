@@ -195,8 +195,37 @@ class DecoderLinear:
 
 
 class PairwiseScore(nn.Module):
-    def __init__(self, dim_in, act='tanh'):
+    def __init__(self, d, dim_in, act='tanh'):
         super(PairwiseScore, self).__init__()
+        self.d = d
+        self.W1 = Parameter(torch.zeros(size=[d, d, dim_in, dim_in]))
+        self.W2 = Parameter(torch.zeros(size=[d, d, dim_in, dim_in]))
+        self.v = Parameter(torch.zeros(size=[d, d, dim_in]))
+        self.activation = NONLINEARITIES[act]
+        weights_init(self)
+
+    def forward(self, X):
+        """
+        :param X: [batch_size, d, dim] tensor
+        :return [batch_size, d, d] tensor
+
+        W_ij = v^T tanh(W1 X_i + W2 X_j)
+        """
+        assert len(X.shape) == 3
+        W1_Xi = torch.einsum('ijoc,bic->bijo', self.W1, X)  # [batch, d, d, dim]
+        W2_Xj = torch.einsum('ijoc,bjc->bijo', self.W2, X)  # [batch, d, d, dim]
+
+        W1_Xi_add_W2_Xj = W1_Xi + W2_Xj
+        H_ij = self.activation(W1_Xi_add_W2_Xj)  # [batch, d, d, dim]
+
+        W = torch.einsum('bijk,ijk->bij', H_ij, self.v)  # [batch_size, d, d]
+
+        return W
+
+
+class Score(nn.Module):
+    def __init__(self, dim_in, act='tanh'):
+        super(Score, self).__init__()
         self.W1 = Parameter(torch.zeros(size=[dim_in, dim_in]))
         self.W2 = Parameter(torch.zeros(size=[dim_in, dim_in]))
         self.v = Parameter(torch.zeros(size=[dim_in]))
