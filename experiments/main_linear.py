@@ -98,8 +98,8 @@ if __name__ == '__main__':
                                        'p': cmd_args.p,
                                        'eta': cmd_args.eta})
     if cmd_args.phase == 'train':
-        trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size, start_epoch=cmd_args.start_epoch)
-        print(w_dag.w[0:4])
+        trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size, start_epoch=cmd_args.start_epoch,
+                      loss_type='nll')
 
     # ---------------------
     #  Eval

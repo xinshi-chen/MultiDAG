@@ -86,7 +86,7 @@ class Trainer:
 
         self.best_vali_nll = math.inf
 
-    def train(self, epochs, batch_size, start_epoch=0):
+    def train(self, epochs, batch_size, start_epoch=0, loss_type=None):
         """
         training logic
         """
@@ -101,11 +101,11 @@ class Trainer:
         dsc = ''
         print('*** Start training ***')
         for e in progress_bar:
-            self._train_epoch(e, epochs, batch_size, progress_bar, dsc)
+            self._train_epoch(e, epochs, batch_size, progress_bar, dsc, loss_type)
 
         return
 
-    def _train_epoch(self, epoch, tot_epoch, batch_size, progress_bar, dsc):
+    def _train_epoch(self, epoch, tot_epoch, batch_size, progress_bar, dsc, loss_type):
         self.encoder.train()
         if self.d_optimizer is not None:
             self.decoder.train()
@@ -131,7 +131,7 @@ class Trainer:
             self.w_optimizer.zero_grad()
 
             loss, h_wD, log = self.get_loss(X_in=X_in.detach(), X_eval=X_eval.detach(), W_D=self.w_dag(idx),
-                                            ld=self.ld[idx].detach())
+                                            ld=self.ld[idx].detach(), loss_type=loss_type)
             loss.backward()
 
             # -----------------
@@ -172,24 +172,33 @@ class Trainer:
                 self.save(self.train_itr, best=False)
         return
 
-    def get_loss(self, X_in, X_eval, W_D, ld, phase='train', w_dist=True):
+    def get_loss(self, X_in, X_eval, W_D, ld, phase='train', loss_type=None):
+
+        if loss_type == 'nll':
+            W_est = self.encoder(X_in)
+            loss_nll = self.decoder.NLL(W_est, X_eval).sum(dim=-1).mean()
+            w_l1 = torch.sum(torch.abs(W_est).view(W_est.shape[0], -1), dim=-1).mean()
+            h_wD = h_W[self.constraint_type](W_est)
+
+            log = {'nll': loss_nll.item(),
+                   'l1': w_l1.item(),
+                   'hw': h_wD.mean().item(),
+                   'w_dist': 0.0
+                   }
+            return loss_nll, 0.0, log
 
         # neg-log-likelihood
-        if phase == 'train':
-            loss_nll = self.decoder.NLL(W_D, X_eval).sum(dim=-1).mean()
-        else:
+        if loss_type == 'projection':
             loss_nll = torch.tensor(0.0)
+        else:
+            loss_nll = self.decoder.NLL(W_D, X_eval).sum(dim=-1).mean()
 
         # distance ||W_D - W_est||
-        if w_dist:
-            W_est = self.encoder(X_in)
-            if phase != 'train':
-                W_est = W_est.detach()
-            w_dist = W_dist(W_D, W_est, 'l1')
-            alpha_w_dist = self.alpha / (2 * self.db.d) * w_dist
-        else:
-            w_dist = torch.tensor(0.0)
-            alpha_w_dist = w_dist.to(DEVICE)
+        W_est = self.encoder(X_in)
+        if phase != 'train':
+            W_est = W_est.detach()
+        w_dist = W_dist(W_D, W_est, 'l1')
+        alpha_w_dist = self.alpha / (2 * self.db.d) * w_dist
 
         # dagness constraints
         h_wD = h_W[self.constraint_type](W_D)  # [m]
@@ -232,7 +241,8 @@ class Trainer:
 
         for it in progress_bar:
             optimizer.zero_grad()
-            loss, h_wD, log = self.get_loss(X_in=X_in.detach(), X_eval=X_eval.detach, W_D=w_dag.w, ld=ld.detach(), phase='vali')
+            loss, h_wD, log = self.get_loss(X_in=X_in.detach(), X_eval=X_eval.detach, W_D=w_dag.w, ld=ld.detach(),
+                                            phase='vali', loss_type='projection')
             loss.backward()
             optimizer.step()
             # update lambda
