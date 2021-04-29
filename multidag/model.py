@@ -16,7 +16,7 @@ class G_DAG(nn.Module):
     @property 
     def g(self):
         # make diagonal zero
-        return self._g * (1 - torch.eye(self.d).unsqueeze(0).repeat(self.m, 1, 1).to(DEVICE))
+        return self._g * (1 - torch.eye(self.p).unsqueeze(0).repeat(self.K, 1, 1).to(DEVICE))
         
     def forward(self, idx):
         return self.g[idx]
