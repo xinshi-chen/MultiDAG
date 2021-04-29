@@ -1,10 +1,10 @@
-# VAE for DAGs
+# MultiDAGs
 
 
 # Reproduce Experiments
 
 ## Install the module
-Please navigate to the root of this repository, and run the following command to install the `vae4dag` module.
+Please navigate to the root of this repository, and run the following command to install the `multidag` module.
 ```
 pip install -e .
 ```
