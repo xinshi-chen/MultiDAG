@@ -14,12 +14,12 @@ class G_DAG(nn.Module):
         weights_init(self)
 
     @property 
-    def w(self):
+    def g(self):
         # make diagonal zero
-        return self._w * (1 - torch.eye(self.d).unsqueeze(0).repeat(self.m, 1, 1).to(DEVICE))
+        return self._g * (1 - torch.eye(self.d).unsqueeze(0).repeat(self.m, 1, 1).to(DEVICE))
         
     def forward(self, idx):
-        return self.w[idx]
+        return self.g[idx]
 
 
 class LSEM:
