@@ -48,7 +48,7 @@ class Trainer:
         # TODO hyperparameters may be different
         self.hyperparameter = dict()
         default = {'rho': 0.2, 'lambda': 0.1, 'c': 1.0, 'eta': 0.01,
-                   'nu': 0.2, 'threshold': 1e-1, 'dual_interval': 5}
+                   'nu': 0.2, 'mu': 0.1, 'threshold': 1e-1, 'dual_interval': 5}
 
         for key in default:
             if key in hyperparameters:
@@ -102,8 +102,8 @@ class Trainer:
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=10)
 
         # TODO
-        progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f] [ld: %.2f, c: %.2f]" %
-                                     (log['SE'], log['l1/l2'], log['h_D'], log['conn'],
+        progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f, one: %.2f] [ld: %.2f, c: %.2f]" %
+                                     (log['SE'], log['l1/l2'], log['h_D'], log['conn'], log['one'],
                                       self.ld.mean().item(), self.c.mean().item()) + dsc)
 
             # TODO: save
@@ -118,6 +118,7 @@ class Trainer:
 
         # dagness constraints
         conn = h_W[self.constraint_type](self.g_dag.T)
+        one = (self.g_dag.T - 1).square().sum()
         # entropy = - self.hyperparameter['nu'] * (self.g_dag.T * torch.log(self.g_dag.T + 1e-20) + (
         #         1 -  self.g_dag.T) * torch.log(1 - self.g_dag.T + 1e-20)).sum()
         h_D = h_W[self.constraint_type](G_D)
@@ -130,12 +131,13 @@ class Trainer:
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
         rho_w_l1 = self.hyperparameter['rho'] * w_l1_l2
 
-        loss = loss_se + self.hyperparameter['nu'] * conn + rho_w_l1 + lambda_h_wD + c_hw_2
+        loss = loss_se + self.hyperparameter['nu'] * conn + self.hyperparameter['mu'] * one + rho_w_l1 + lambda_h_wD + c_hw_2
 
         log = {'SE': loss_se.item(),
                'l1/l2': w_l1_l2.item(),
                'h_D': h_D.sum().item(),
-               'conn': conn.item()
+               'conn': conn.item(),
+               'one': one.item()
                }
         return loss, h_D.sum().item(), log
 
