@@ -118,7 +118,7 @@ class Trainer:
 
         # dagness constraints
         conn = h_W[self.constraint_type](self.g_dag.T)
-        one = (self.g_dag.T - 1).square().sum()
+        one = (self.g_dag.T - 1).square().sum() * 0
         # entropy = - self.hyperparameter['nu'] * (self.g_dag.T * torch.log(self.g_dag.T + 1e-20) + (
         #         1 -  self.g_dag.T) * torch.log(1 - self.g_dag.T + 1e-20)).sum()
         h_D = h_W[self.constraint_type](G_D)
