@@ -10,13 +10,18 @@ class G_DAG(nn.Module):
         super(G_DAG, self).__init__()
         self.p = p
         self.K = num_dags
-        self._g = Parameter(torch.rand(size=[num_dags, p, p]))
+        self._G = Parameter(torch.randn(size=[num_dags, p, p]))
+        self._T = Parameter(2 * torch.rand(size=(1, p, p)))
         weights_init(self)
 
-    @property 
-    def g(self):
+    @property
+    def G(self):
         # make diagonal zero
-        return self._g * (1 - torch.eye(self.p).unsqueeze(0).repeat(self.K, 1, 1).to(DEVICE))
+        return self._G * (1 - torch.eye(self.p).unsqueeze(0).repeat(self.K, 1, 1).to(DEVICE))
+
+    @property
+    def T(self):
+        return torch.sigmoid(self._T.to(DEVICE))
         
     def forward(self, idx):
         return self.g[idx]
@@ -24,22 +29,22 @@ class G_DAG(nn.Module):
 
 class LSEM:
     @staticmethod
-    def forward(W, X):
+    def forward(G, X):
         """
-        :param W: [batch, d, d] tensor  d1 == d
-        :param X: [batch, n, d] tensor
+        :param G: [K, d, d] tensor  d1 == d
+        :param X: [K, n, d] tensor
         """
         # batch, n, d = X.shape
-        WX = torch.einsum('bji,bnj->bnij', W, X)  # [batch, n, d, d] tensor
-        mean = torch.sum(WX, dim=-1)  # [batch, n, d]
+        GX = torch.einsum('bji,bnj->bnij', G, X)  # [batch, n, d, d] tensor
+        mean = torch.sum(GX, dim=-1)  # [batch, n, d]
 
         return mean
 
     @staticmethod
-    def SE(W, X):
+    def SE(G, X):
         """
-        sequared error
+        se: squared error
         """
-        mean = LSEM.forward(W, X)  # [batch, n, d]
-        se = (X - mean) ** 2  # [batch, n, d]
+        mean = LSEM.forward(G, X)  # [K, n, d]
+        se = ((X - mean) ** 2).sum([2]).mean()
         return se

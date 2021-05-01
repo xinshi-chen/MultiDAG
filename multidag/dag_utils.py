@@ -4,7 +4,7 @@ import numpy as np
 import networkx as nx
 from multidag.common.consts import DEVICE
 import torch
-from notears.linear import notears_linear
+# from notears.linear import notears_linear
 from tqdm import tqdm
 import math
 import torch.nn.functional as F
@@ -63,11 +63,11 @@ class NOTEARS_h_W(torch.autograd.Function):
 
         input, e_W_W = ctx.saved_tensors
         if len(input.shape) == 2:
-            grad_input = e_W_W.transpose() * 2 * input
+            grad_input = e_W_W.t() * 2 * input
             return grad_input * grad_output
         elif len(input.shape) == 3:
             m = input.shape[0]
-            grad_input = e_W_W.transpose(-1, -2) * 2 * input  # [batch, d, d]
+            grad_input = e_W_W.permute(0, 2, 1) * 2 * input  # [batch, d, d]
             return grad_input * grad_output.view(m, 1, 1)
 
 
@@ -97,21 +97,21 @@ class TraceExpm(torch.autograd.Function):
 trace_expm = TraceExpm.apply
 
 
-def run_notears_linear(X):
-    """
-    :param X: [m, n, d]
-    :param d:
-    :return: W_est: [m, d, d]
-    """
-    assert len(X.shape) == 3
-    num_dag = X.shape[0]
-    d = X.shape[2]
-    W_est = np.zeros([num_dag, d, d])
-    progress_bar = tqdm(range(num_dag))
-    for i in progress_bar:
-        W_est[i] = notears_linear(X[i], lambda1=0.1, loss_type='l2')
-        assert is_dag(W_est[i])
-    return W_est.astype(np.float32)
+# def run_notears_linear(X):
+#     """
+#     :param X: [m, n, d]
+#     :param d:
+#     :return: W_est: [m, d, d]
+#     """
+#     assert len(X.shape) == 3
+#     num_dag = X.shape[0]
+#     d = X.shape[2]
+#     W_est = np.zeros([num_dag, d, d])
+#     progress_bar = tqdm(range(num_dag))
+#     for i in progress_bar:
+#         W_est[i] = notears_linear(X[i], lambda1=0.1, loss_type='l2')
+#         assert is_dag(W_est[i])
+#     return W_est.astype(np.float32)
 
 
 def project_to_dag(W, sparsity=1.0, max_iter=20, h_tol=1e-3, rho_max=1e+16, w_threshold=0.1):
@@ -271,6 +271,65 @@ def sampler(W, n, f=None, g=None):
         neg_log_likelihood[:, j] = log_z + 0.5 * ((X[:, j] - m_j) / sigma_j) ** 2
 
     return X, torch.sum(neg_log_likelihood, dim=-1)
+
+
+def count_accuracy(B_true, B_est):
+    """Compute various accuracy metrics for B_est.
+        true positive = predicted association exists in condition in correct direction
+        reverse = predicted association exists in condition in opposite direction
+        false positive = predicted association does not exist in condition
+        Args:
+            B_true (np.ndarray): [d, d] ground truth graph, {0, 1}
+            B_est (np.ndarray): [d, d] estimate, {0, 1}
+        Returns:
+            fdr: (reverse + false positive) / prediction positive
+            tpr: (true positive) / condition positive
+            fpr: (reverse + false positive) / condition negative
+            shd: undirected extra + undirected missing + reverse
+            nnz: prediction positive
+        """
+    if (B_est == -1).any():  # cpdag
+        if not ((B_est == 0) | (B_est == 1) | (B_est == -1)).all():
+            raise ValueError('B_est should take value in {0,1,-1}')
+        if ((B_est == -1) & (B_est.T == -1)).any():
+            raise ValueError('undirected edge should only appear once')
+    else:  # dag
+        if not ((B_est == 0) | (B_est == 1)).all():
+            raise ValueError('B_est should take value in {0,1}')
+        if not is_dag(B_est):
+            raise ValueError('B_est should be a DAG')
+    d = B_true.shape[0]
+    # linear index of nonzeros
+    pred_und = np.flatnonzero(B_est == -1)
+    pred = np.flatnonzero(B_est == 1)
+    cond = np.flatnonzero(B_true)
+    cond_reversed = np.flatnonzero(B_true.T)
+    cond_skeleton = np.concatenate([cond, cond_reversed])
+    # true pos
+    true_pos = np.intersect1d(pred, cond, assume_unique=True)
+    # treat undirected edge favorably
+    true_pos_und = np.intersect1d(pred_und, cond_skeleton, assume_unique=True)
+    true_pos = np.concatenate([true_pos, true_pos_und])
+    # false pos
+    false_pos = np.setdiff1d(pred, cond_skeleton, assume_unique=True)
+    false_pos_und = np.setdiff1d(pred_und, cond_skeleton, assume_unique=True)
+    false_pos = np.concatenate([false_pos, false_pos_und])
+    # reverse
+    extra = np.setdiff1d(pred, cond, assume_unique=True)
+    reverse = np.intersect1d(extra, cond_reversed, assume_unique=True)
+    # compute ratio
+    pred_size = len(pred) + len(pred_und)
+    cond_neg_size = 0.5 * d * (d - 1) - len(cond)
+    fdr = float(len(reverse) + len(false_pos)) / max(pred_size, 1)
+    tpr = float(len(true_pos)) / max(len(cond), 1)
+    fpr = float(len(reverse) + len(false_pos)) / max(cond_neg_size, 1)
+    # structural hamming distance
+    pred_lower = np.flatnonzero(np.tril(B_est + B_est.T))
+    cond_lower = np.flatnonzero(np.tril(B_true + B_true.T))
+    extra_lower = np.setdiff1d(pred_lower, cond_lower, assume_unique=True)
+    missing_lower = np.setdiff1d(cond_lower, pred_lower, assume_unique=True)
+    shd = len(extra_lower) + len(missing_lower) + len(reverse)
+    return {'fdr': fdr, 'tpr': tpr, 'fpr': fpr, 'shd': shd, 'nnz': pred_size}
 
 
 if __name__ == '__main__':
