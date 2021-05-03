@@ -94,6 +94,8 @@ if __name__ == '__main__':
                  s0=cmd_args.s0,
                  s=cmd_args.s,
                  d=cmd_args.d,
+                 gid=cmd_args.gid,
+                 xid=cmd_args.xid,
                  w_range=(0.5, 2.0), verbose=True)
     X = db.X.detach().numpy()
     G = db.G

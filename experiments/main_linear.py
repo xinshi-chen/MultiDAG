@@ -25,6 +25,8 @@ if __name__ == '__main__':
                  s0=cmd_args.s0,
                  s=cmd_args.s,
                  d=cmd_args.d,
+                 gid=cmd_args.gid,
+                 xid=cmd_args.xid,
                  w_range=(0.5, 2.0), verbose=True)
 
     # ---------------------
@@ -47,15 +49,14 @@ if __name__ == '__main__':
     # ---------------------
     #  Trainer
     # ---------------------
-    trainer = Trainer(g_dag=g_dag, optimizer=g_opt, data_base=db, save_dir='./check_points',
-                      model_dump=f'parameters')  # TODO
+    trainer = Trainer(g_dag=g_dag, optimizer=g_opt, data_base=db, save_dir='./saved_models',
+                      model_dump=f'parameters')
     if cmd_args.phase == 'train':
-        trainer.train(epochs=cmd_args.num_epochs, batch_size=cmd_args.batch_size, start_epoch=cmd_args.start_epoch)
+        trainer.train(epochs=cmd_args.num_epochs, start_epoch=cmd_args.start_epoch)
 
     # ---------------------
     #  Eval
     # ---------------------
-    # TODO
     print('*** Evaluation ***')
     trainer.evaluate()
     # load model
