@@ -9,7 +9,7 @@ class Dataset(object):
     """
     synthetic dataset
     """
-    def __init__(self, p, n, K, s0, s, d, w_range: tuple = (0.5, 2.0), verbose=True):
+    def __init__(self, p, n, K, s0, s, d, gid=1, xid=1, w_range: tuple = (0.5, 2.0), verbose=True):
         """
         :param p: dimension of random variable
         :param n: number of samples per DAG
@@ -27,6 +27,8 @@ class Dataset(object):
         self.s0 = s0
         self.s = s
         self.d = d
+        self.gid = gid
+        self.xid = xid
         self.w_range = w_range
 
         hp_dict = {'p': p,
@@ -50,10 +52,10 @@ class Dataset(object):
         if verbose:
             print('*** Loading DAGs ***')
 
-        self.data_dir = '../data'
+        self.data_dir = os.path.join('../data', self.hp)
         if not os.path.isdir(self.data_dir):
             os.makedirs(self.data_dir)
-        data_pkl = self.data_dir + '/' + self.hp + '-DAGs.pkl'
+        data_pkl = self.data_dir + f'/DAGs_{self.gid}.pkl'
 
         if os.path.isfile(data_pkl):
             with open(data_pkl, 'rb') as f:
@@ -69,15 +71,15 @@ class Dataset(object):
         if verbose:
             print('*** Loading Samples ***')
 
-            data_pkl = self.data_dir + '/' + self.hp + '-samples.pkl'
+        data_pkl = self.data_dir + f'/samples_{self.gid}_{self.xid}.pkl'
 
-            if os.path.isfile(data_pkl):
-                with open(data_pkl, 'rb') as f:
-                    self.X = pkl.load(f)
-            else:
-                self.X = self.gen_samples(self.G, self.n)
-                with open(data_pkl, 'wb') as f:
-                    pkl.dump(self.X, f)
+        if os.path.isfile(data_pkl):
+            with open(data_pkl, 'rb') as f:
+                self.X = pkl.load(f)
+        else:
+            self.X = self.gen_samples(self.G, self.n)
+            with open(data_pkl, 'wb') as f:
+                pkl.dump(self.X, f)
 
     def gen_samples(self, G, n):
 
@@ -92,7 +94,7 @@ class Dataset(object):
             X[i, :, :] = sampler(G[i], n)
         return X.detach()
 
-    def load_data(self, batch_size, auto_reset=False, shuffle=True, device=None, phase='train'):
+    def load_batch_data(self, batch_size, auto_reset=False, shuffle=True, device=None, phase='train'):
 
         if phase != 'train':
             assert not shuffle
@@ -122,6 +124,14 @@ class Dataset(object):
             if not auto_reset:
                 break
 
+    def load_data(self, device=None):
+        if device is None:
+            return self.X
+        else:
+            return self.X.to(device)
+
+
+
 
 def random_G(p, s, s0, d, K, w_range: tuple = (0.5, 2.0)):
     """
@@ -135,13 +145,41 @@ def random_G(p, s, s0, d, K, w_range: tuple = (0.5, 2.0)):
 
     B = np.tril(np.ones([p, p]), k=-1)
 
-    # union support
-    G = np.zeros([K, p, p])
     # TODO:
     #  (1) Random sample submatrix S from B such that |supp(S)| = s
     #  (2) Random sample K submatrices G[k] from S such that
     #      (i) |supp(G[k])| = s_0
     #      (ii) |supp(G[k][:, j]])| <= d
+    # union support
+    G = np.zeros([K, p, p])
+    assert K * s0 >= s
+    indices = np.where(B > 0)
+    random_pos = np.random.permutation(len(indices[0]))[:s]
+    S = np.zeros((p, p))
+    row_indices = indices[0][random_pos]
+    col_indices = indices[1][random_pos]
+    S[(row_indices, col_indices)] = 1
+
+    count_g = 0
+    while True:
+        for k in range(K):
+            count_k = 0
+            while True:
+                random_pos = np.random.permutation(s)[:s0]
+                G[k][(row_indices[random_pos], col_indices[random_pos])] = 1
+                if G[k].sum(axis=1).max() <= d:
+                    break
+                else:
+                    G[k] = 0
+                    count_k += 1
+                    if count_k > 100:
+                        raise ValueError('Please improve the sample strategy for G[k]')
+        if (G.sum(axis=0) >= S).all():
+            break
+        else:
+            count_g += 1
+            if count_g > 100:
+                raise ValueError('Please improve the sample strategy for G')
 
     # permutation matrix
     Perm = np.random.permutation(np.eye(p, p))
@@ -179,8 +217,11 @@ def sampler(G, n):
     z = torch.normal(0, 1, size=(n, p)).float()
 
     # get the topological order of the DAG
-    G = nx.DiGraph(G.detach().cpu().numpy())
-    ordered_vertices = list(nx.topological_sort(G))
+    # todo: check change
+    # G = nx.DiGraph(G.detach().cpu().numpy())
+    # ordered_vertices = list(nx.topological_sort(G))
+    g = nx.DiGraph(G.detach().cpu().numpy())
+    ordered_vertices = list(nx.topological_sort(g))
     assert len(ordered_vertices) == p
     for j in ordered_vertices:
 
@@ -188,3 +229,18 @@ def sampler(G, n):
         m_j = GX.sum(dim=-1)   # linear model
         X[:, j] = m_j + z[:, j]  # add noise
     return X
+
+if __name__ == '__main__':
+    from multidag.common.cmd_args import cmd_args
+    for gid in range(cmd_args.num_g):
+        for xid in range(cmd_args.num_x):
+            db = Dataset(p=cmd_args.p,
+                         n=cmd_args.n,
+                         K=cmd_args.K,
+                         s0=cmd_args.s0,
+                         s=cmd_args.s,
+                         d=cmd_args.d,
+                         gid=gid+1,
+                         xid=xid+1,
+                         w_range=(0.5, 2.0), verbose=True)
+
