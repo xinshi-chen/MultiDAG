@@ -9,7 +9,7 @@ class Dataset(object):
     """
     synthetic dataset
     """
-    def __init__(self, p, n, K, s0, s, d, w_range: tuple = (0.5, 2.0), verbose=True):
+    def __init__(self, p, n, K, s0, s, d, gid=1, xid=1, w_range: tuple = (0.5, 2.0), verbose=True):
         """
         :param p: dimension of random variable
         :param n: number of samples per DAG
@@ -27,6 +27,8 @@ class Dataset(object):
         self.s0 = s0
         self.s = s
         self.d = d
+        self.gid = gid
+        self.xid = xid
         self.w_range = w_range
 
         hp_dict = {'p': p,
@@ -50,10 +52,10 @@ class Dataset(object):
         if verbose:
             print('*** Loading DAGs ***')
 
-        self.data_dir = '../data'
+        self.data_dir = os.path.join('../data', self.hp)
         if not os.path.isdir(self.data_dir):
             os.makedirs(self.data_dir)
-        data_pkl = self.data_dir + '/' + self.hp + '-DAGs.pkl'
+        data_pkl = self.data_dir + f'/DAGs_{self.gid}.pkl'
 
         if os.path.isfile(data_pkl):
             with open(data_pkl, 'rb') as f:
@@ -69,15 +71,15 @@ class Dataset(object):
         if verbose:
             print('*** Loading Samples ***')
 
-            data_pkl = self.data_dir + '/' + self.hp + '-samples.pkl'
+        data_pkl = self.data_dir + f'/samples_{self.gid}_{self.xid}.pkl'
 
-            if os.path.isfile(data_pkl):
-                with open(data_pkl, 'rb') as f:
-                    self.X = pkl.load(f)
-            else:
-                self.X = self.gen_samples(self.G, self.n)
-                with open(data_pkl, 'wb') as f:
-                    pkl.dump(self.X, f)
+        if os.path.isfile(data_pkl):
+            with open(data_pkl, 'rb') as f:
+                self.X = pkl.load(f)
+        else:
+            self.X = self.gen_samples(self.G, self.n)
+            with open(data_pkl, 'wb') as f:
+                pkl.dump(self.X, f)
 
     def gen_samples(self, G, n):
 
@@ -227,3 +229,18 @@ def sampler(G, n):
         m_j = GX.sum(dim=-1)   # linear model
         X[:, j] = m_j + z[:, j]  # add noise
     return X
+
+if __name__ == '__main__':
+    from multidag.common.cmd_args import cmd_args
+    for gid in range(cmd_args.num_g):
+        for xid in range(cmd_args.num_x):
+            db = Dataset(p=cmd_args.p,
+                         n=cmd_args.n,
+                         K=cmd_args.K,
+                         s0=cmd_args.s0,
+                         s=cmd_args.s,
+                         d=cmd_args.d,
+                         gid=gid+1,
+                         xid=xid+1,
+                         w_range=(0.5, 2.0), verbose=True)
+
