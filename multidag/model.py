@@ -11,7 +11,7 @@ class G_DAG(nn.Module):
         self.p = p
         self.K = num_dags
         self._G = Parameter(torch.randn(size=[num_dags, p, p]))
-        self._T = Parameter(2 * torch.rand(size=(1, p, p)))
+        self._T = Parameter(torch.rand(size=(1, p, p)))
         weights_init(self)
 
     @property
@@ -21,8 +21,8 @@ class G_DAG(nn.Module):
 
     @property
     def T(self):
-        return torch.sigmoid(self._T.to(DEVICE))
-        
+        return self._T.to(DEVICE)
+
     def forward(self, idx):
         return self.g[idx]
 

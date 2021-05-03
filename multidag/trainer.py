@@ -47,8 +47,7 @@ class Trainer:
 
         # TODO hyperparameters may be different
         self.hyperparameter = dict()
-        default = {'rho': 0.2, 'lambda': 0.1, 'c': 1.0, 'eta': 0.01,
-                   'nu': 0.2, 'mu': 0.1, 'threshold': 1e-1, 'dual_interval': 5}
+        default = {'rho': 0.2, 'lambda': 1.0, 'c': 1.0, 'eta': 0.1, 'mu': 0.1, 'threshold': 1e-1, 'dual_interval': 5}
 
         for key in default:
             if key in hyperparameters:
@@ -67,7 +66,7 @@ class Trainer:
         if not os.path.isdir(self.save_dir):
             os.makedirs(self.save_dir)
 
-    def train(self, epochs, batch_size=0, start_epoch=0, loss_type=None):
+    def train(self, epochs, start_epoch=0, loss_type=None):
         """
         training logic
         """
@@ -77,6 +76,7 @@ class Trainer:
         print('*** Start training ***')
         for e in progress_bar:
             self._train_epoch(e, X, progress_bar, dsc, loss_type)
+        self.save()
         return
 
     def _train_epoch(self, epoch, X, progress_bar, dsc, loss_type):
@@ -88,50 +88,46 @@ class Trainer:
         # -----------------
         self.optimizer.zero_grad()
 
-        loss, h_D, log = self.get_loss(X, self.ld, self.c, phase='train')   # TODO
+        loss, h_D, log = self.get_loss(X, self.ld, self.c)
         loss.backward()
 
-        self.optimizer.step()   # TODO
+        self.optimizer.step()
 
         # -----------------
         #  dual step
         # -----------------
-        # TODO
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
-            self.ld += (1 / self.db.d) * (10 - (10 - h_D) * ((10 - h_D) > 0))
-            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=10)
+            self.ld += (20 - (20 - h_D) * ((20 - h_D) > 0))
+            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=20)
 
-        # TODO
+        # info
         progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f, one: %.2f] [ld: %.2f, c: %.2f]" %
                                      (log['SE'], log['l1/l2'], log['h_D'], log['conn'], log['one'],
                                       self.ld.mean().item(), self.c.mean().item()) + dsc)
-
-            # TODO: save
-        self.save(epoch)
         return
 
-    def get_loss(self, X, ld, c, phase='train'):
-        # TODO
+    def get_loss(self, X, ld, c):
         G_D = self.g_dag.G * self.g_dag.T
         # Squared Error
         loss_se = LSEM.SE(G_D, X)
 
         # dagness constraints
+        one = (self.g_dag.T).abs().mean()
+        mu_one = self.hyperparameter['mu'] * one
+
         conn = h_W[self.constraint_type](self.g_dag.T)
-        one = (self.g_dag.T - 1).square().sum() * 0
-        # entropy = - self.hyperparameter['nu'] * (self.g_dag.T * torch.log(self.g_dag.T + 1e-20) + (
-        #         1 -  self.g_dag.T) * torch.log(1 - self.g_dag.T + 1e-20)).sum()
+        lambda_conn = ld.mean() * conn
+        c_conn_2 = 0.5 * c.mean() * conn ** 2
+
         h_D = h_W[self.constraint_type](G_D)
-        # h_D = h_W[self.constraint_type](self.g_dag.T)  # scalar
-        lambda_h_wD = (ld * h_D).sum()  # lagrangian term
-        c_hw_2 = 0.5 * (c * h_D * h_D).sum()  # l2 penalty
+        lambda_h_wD = (ld * h_D).mean()  # lagrangian term
+        c_hw_2 = 0.5 * (c * h_D * h_D).mean()  # l2 penalty
 
         # group norm
-        # w_l1_l2 = torch.linalg.norm(self.g_dag.G, ord=2, dim=0).sum()
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
         rho_w_l1 = self.hyperparameter['rho'] * w_l1_l2
 
-        loss = loss_se + self.hyperparameter['nu'] * conn + self.hyperparameter['mu'] * one + rho_w_l1 + lambda_h_wD + c_hw_2
+        loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 
         log = {'SE': loss_se.item(),
                'l1/l2': w_l1_l2.item(),
@@ -141,8 +137,8 @@ class Trainer:
                }
         return loss, h_D.sum().item(), log
 
-    def save(self, epoch):
-        dump = os.path.join(self.save_dir, self.model_dump + f'_{epoch}')
+    def save(self):
+        dump = os.path.join(self.save_dir, self.model_dump)
         torch.save(self.g_dag.state_dict(), dump)
 
     def evaluate(self):
@@ -155,7 +151,6 @@ class Trainer:
         for k in range(G_true.shape[0]):
             print(f'##### result for graph {k} #####')
             log = count_accuracy(G_true[k], G_est[k])
-            for key in log:
-                print(f'{key}:\t {log[key]:.3f}')
+            print(log)
 
 
