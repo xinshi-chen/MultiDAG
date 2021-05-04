@@ -51,7 +51,8 @@ class Trainer:
 
         # TODO hyperparameters may be different
         self.hyperparameter = dict()
-        default = {'rho': 0.2, 'lambda': 1.0, 'c': 1.0, 'eta': 0.1, 'mu': 0.0, 'threshold': 2e-1, 'dual_interval': 1}
+        default = {'rho': 0.1 * np.sqrt((self.db.K) / (len(K_mask))), 'lambda': 1.0, 'c': 1.0, 'eta': 0.1,
+                   'mu': 0.0, 'threshold': 2e-1, 'dual_interval': 1}
 
         for key in default:
             if key in hyperparameters:
