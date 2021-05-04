@@ -10,8 +10,8 @@ class G_DAG(nn.Module):
         super(G_DAG, self).__init__()
         self.p = p
         self.K = num_dags
-        self._G = Parameter(torch.randn(size=[num_dags, p, p]))
-        self._T = Parameter(torch.rand(size=(1, p, p)))
+        self._G = Parameter(torch.randn(size=[num_dags, p, p], dtype=torch.double))
+        self._T = Parameter(torch.rand(size=(1, p, p), dtype=torch.double))
         weights_init(self)
 
     @property

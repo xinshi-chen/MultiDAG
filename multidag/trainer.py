@@ -34,20 +34,24 @@ def W_dist(w1, w2, norm='l1'):
 
 
 class Trainer:
-    def __init__(self, g_dag, optimizer, data_base, save_dir, model_dump, constraint_type='notears', hyperparameters={}):
+    def __init__(self, g_dag, optimizer, data_base, constraint_type='notears',
+                 K_mask=None, hyperparameters={}):
 
         self.g_dag = g_dag
         self.db = data_base
+        if K_mask is None:
+            self.K_mask = np.arange(self.db.K)
+            self.K_mask = np.arange(self.db.K)
+        else:
+            self.K_mask = K_mask
 
         self.optimizer = optimizer
         self.train_itr = 0
         self.constraint_type = constraint_type
 
-        self.model_dump = model_dump
-
         # TODO hyperparameters may be different
         self.hyperparameter = dict()
-        default = {'rho': 0.2, 'lambda': 1.0, 'c': 1.0, 'eta': 0.1, 'mu': 0.1, 'threshold': 1e-1, 'dual_interval': 5}
+        default = {'rho': 0.2, 'lambda': 1.0, 'c': 1.0, 'eta': 0.1, 'mu': 0.0, 'threshold': 2e-1, 'dual_interval': 1}
 
         for key in default:
             if key in hyperparameters:
@@ -58,13 +62,8 @@ class Trainer:
         self.n = data_base.n
 
         # initialize lambda and alpha
-        self.ld = torch.ones(size=[self.db.K]).to(DEVICE) * self.hyperparameter['lambda']
-        self.c = torch.ones(size=[self.db.K]).to(DEVICE) * self.hyperparameter['c']
-
-        # make the save_dir with hyperparameter index
-        self.save_dir = save_dir + '/' + data_base.hp
-        if not os.path.isdir(self.save_dir):
-            os.makedirs(self.save_dir)
+        self.ld = torch.ones(size=[len(K_mask)]).to(DEVICE) * self.hyperparameter['lambda']
+        self.c = torch.ones(size=[len(K_mask)]).to(DEVICE) * self.hyperparameter['c']
 
     def train(self, epochs, start_epoch=0, loss_type=None):
         """
@@ -72,12 +71,10 @@ class Trainer:
         """
         progress_bar = tqdm(range(start_epoch, start_epoch + epochs))
         dsc = ''
-        X = self.db.load_data(device=DEVICE)
-        print('*** Start training ***')
+        X = self.db.load_data(device=DEVICE)[self.K_mask]
         for e in progress_bar:
             self._train_epoch(e, X, progress_bar, dsc, loss_type)
-        self.save()
-        return
+        return self.save()
 
     def _train_epoch(self, epoch, X, progress_bar, dsc, loss_type):
 
@@ -97,8 +94,8 @@ class Trainer:
         #  dual step
         # -----------------
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
-            self.ld += (20 - (20 - h_D) * ((20 - h_D) > 0))
-            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=20)
+            self.ld += self.c * (10 - (10 - h_D) * ((10 - h_D) > 0))
+            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=10)
 
         # info
         progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f, one: %.2f] [ld: %.2f, c: %.2f]" %
@@ -112,7 +109,7 @@ class Trainer:
         loss_se = LSEM.SE(G_D, X)
 
         # dagness constraints
-        one = (self.g_dag.T).abs().mean()
+        one = (self.g_dag.T - 1).abs().mean()
         mu_one = self.hyperparameter['mu'] * one
 
         conn = h_W[self.constraint_type](self.g_dag.T)
@@ -120,6 +117,9 @@ class Trainer:
         c_conn_2 = 0.5 * c.mean() * conn ** 2
 
         h_D = h_W[self.constraint_type](G_D)
+        # if h_D.sum().item() == 0:
+        #     for i in range(len(h_D)):
+        #         assert is_dag(G_D[i].detach().numpy())
         lambda_h_wD = (ld * h_D).mean()  # lagrangian term
         c_hw_2 = 0.5 * (c * h_D * h_D).mean()  # l2 penalty
 
@@ -131,26 +131,24 @@ class Trainer:
 
         log = {'SE': loss_se.item(),
                'l1/l2': w_l1_l2.item(),
-               'h_D': h_D.sum().item(),
+               'h_D': h_D.mean().item(),
                'conn': conn.item(),
                'one': one.item()
                }
-        return loss, h_D.sum().item(), log
+        return loss, h_D.mean().item(), log
 
     def save(self):
-        dump = os.path.join(self.save_dir, self.model_dump)
-        torch.save(self.g_dag.state_dict(), dump)
+        return self.g_dag.state_dict
 
     def evaluate(self):
-        G_true = np.abs(np.sign(self.db.G))
+        G_true = np.abs(np.sign(self.db.G[self.K_mask]))
         G_est = np.abs((self.g_dag.G * self.g_dag.T).detach().cpu().numpy())
-        T = self.g_dag.T.squeeze().detach().cpu().numpy()
-        T[T < self.hyperparameter['threshold']] = 0
         G_est[G_est < self.hyperparameter['threshold']] = 0
         G_est = np.sign(G_est)
+        accs = []
         for k in range(G_true.shape[0]):
-            print(f'##### result for graph {k} #####')
-            log = count_accuracy(G_true[k], G_est[k])
-            print(log)
+            acc = count_accuracy(G_true[k], G_est[k])
+            accs.append(acc)
+        return accs
 
 

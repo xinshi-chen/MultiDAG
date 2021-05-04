@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.linalg as slin
 import scipy.optimize as sopt
+import pickle
+import os
 from scipy.special import expit as sigmoid
 from multidag.dag_utils import is_dag, count_accuracy
 from multidag.common.cmd_args import cmd_args
@@ -87,21 +89,33 @@ def notears_linear(X, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+1
 
 
 if __name__ == '__main__':
-    print('*** Loading data ***')
+    print('*** Running Baseline NOTEARS ***')
     db = Dataset(p=cmd_args.p,
                  n=cmd_args.n,
                  K=cmd_args.K,
                  s0=cmd_args.s0,
                  s=cmd_args.s,
                  d=cmd_args.d,
-                 gid=cmd_args.gid,
-                 xid=cmd_args.xid,
                  w_range=(0.5, 2.0), verbose=True)
+    print(f'*** notears solving {db.hp} ***')
     X = db.X.detach().numpy()
     G = db.G
+    accs = []
+    model_save_root = f'./saved_models/{db.hp}'
+    result_save_root = f'./results/{db.hp}'
+    if not os.path.isdir(model_save_root):
+        os.makedirs(model_save_root)
+    if not os.path.isdir(result_save_root):
+        os.makedirs(result_save_root)
+    result_save_dir = os.path.join(result_save_root, f'notears.pkl')
+    model_save_dir = os.path.join(model_save_root, f'notears.pkl')
     for i in range(X.shape[0]):
         B_true = G[i]
         W_est = notears_linear(X[i], lambda1=0.1, loss_type='l2')
         assert is_dag(W_est)
         acc = count_accuracy(B_true, W_est != 0)
-        print(acc)
+        accs.append(acc)
+    with open(result_save_dir, 'wb') as handle:
+        pickle.dump(accs, handle)
+    with open(model_save_dir, 'wb') as handle:
+        pickle.dump(X, handle)

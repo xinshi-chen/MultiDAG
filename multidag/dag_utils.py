@@ -55,7 +55,6 @@ class NOTEARS_h_W(torch.autograd.Function):
         else:
             raise NotImplementedError('Shape should has length 2 or 3.')
         ctx.save_for_backward(input, e_W_W)
-
         return tr_e_W_W - d
 
     @staticmethod
@@ -297,7 +296,11 @@ def count_accuracy(B_true, B_est):
         if not ((B_est == 0) | (B_est == 1)).all():
             raise ValueError('B_est should take value in {0,1}')
         if not is_dag(B_est):
-            raise ValueError('B_est should be a DAG')
+            B_est, _ = project_notears(B_est)
+            if B_est is None:
+                raise ValueError('B_est should be a DAG, fail to project to DAG')
+            else:
+                print("Warning: B_est is not DAG, use projection")
     d = B_true.shape[0]
     # linear index of nonzeros
     pred_und = np.flatnonzero(B_est == -1)
