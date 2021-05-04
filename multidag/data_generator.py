@@ -9,7 +9,7 @@ class Dataset(object):
     """
     synthetic dataset
     """
-    def __init__(self, p, n, K, s0, s, d, gid=1, xid=1, w_range: tuple = (0.5, 2.0), verbose=True):
+    def __init__(self, p, n, K, s0, s, d, w_range: tuple = (0.5, 2.0), verbose=True):
         """
         :param p: dimension of random variable
         :param n: number of samples per DAG
@@ -27,8 +27,6 @@ class Dataset(object):
         self.s0 = s0
         self.s = s
         self.d = d
-        self.gid = gid
-        self.xid = xid
         self.w_range = w_range
 
         hp_dict = {'p': p,
@@ -42,7 +40,7 @@ class Dataset(object):
 
         self.hp = ''
         for key in hp_dict:
-            self.hp += key + '-' + str(hp_dict[key]) + '-'
+            self.hp += key + '-' + str(hp_dict[key]) + '_'
         self.hp = self.hp[:-1]
 
         # ---------------------
@@ -55,7 +53,7 @@ class Dataset(object):
         self.data_dir = os.path.join('../data', self.hp)
         if not os.path.isdir(self.data_dir):
             os.makedirs(self.data_dir)
-        data_pkl = self.data_dir + f'/DAGs_{self.gid}.pkl'
+        data_pkl = self.data_dir + f'/DAGs.pkl'
 
         if os.path.isfile(data_pkl):
             with open(data_pkl, 'rb') as f:
@@ -71,7 +69,7 @@ class Dataset(object):
         if verbose:
             print('*** Loading Samples ***')
 
-        data_pkl = self.data_dir + f'/samples_{self.gid}_{self.xid}.pkl'
+        data_pkl = self.data_dir + f'/samples_gid.pkl'
 
         if os.path.isfile(data_pkl):
             with open(data_pkl, 'rb') as f:
@@ -153,15 +151,16 @@ def random_G(p, s, s0, d, K, w_range: tuple = (0.5, 2.0)):
     # union support
     G = np.zeros([K, p, p])
     assert K * s0 >= s
-    indices = np.where(B > 0)
-    random_pos = np.random.permutation(len(indices[0]))[:s]
-    S = np.zeros((p, p))
-    row_indices = indices[0][random_pos]
-    col_indices = indices[1][random_pos]
-    S[(row_indices, col_indices)] = 1
 
     count_g = 0
     while True:
+        indices = np.where(B > 0)
+        random_pos = np.random.permutation(len(indices[0]))[:s]
+        S = np.zeros((p, p))
+        row_indices = indices[0][random_pos]
+        col_indices = indices[1][random_pos]
+        S[(row_indices, col_indices)] = 1
+
         for k in range(K):
             count_k = 0
             while True:
@@ -172,13 +171,13 @@ def random_G(p, s, s0, d, K, w_range: tuple = (0.5, 2.0)):
                 else:
                     G[k] = 0
                     count_k += 1
-                    if count_k > 100:
+                    if count_k > 10:
                         raise ValueError('Please improve the sample strategy for G[k]')
         if (G.sum(axis=0) >= S).all():
             break
         else:
             count_g += 1
-            if count_g > 100:
+            if count_g > 10:
                 raise ValueError('Please improve the sample strategy for G')
 
     # permutation matrix
@@ -232,15 +231,11 @@ def sampler(G, n):
 
 if __name__ == '__main__':
     from multidag.common.cmd_args import cmd_args
-    for gid in range(cmd_args.num_g):
-        for xid in range(cmd_args.num_x):
-            db = Dataset(p=cmd_args.p,
-                         n=cmd_args.n,
-                         K=cmd_args.K,
-                         s0=cmd_args.s0,
-                         s=cmd_args.s,
-                         d=cmd_args.d,
-                         gid=gid+1,
-                         xid=xid+1,
-                         w_range=(0.5, 2.0), verbose=True)
+    db = Dataset(p=cmd_args.p,
+                 n=cmd_args.n,
+                 K=cmd_args.K,
+                 s0=cmd_args.s0,
+                 s=cmd_args.s,
+                 d=cmd_args.d,
+                 w_range=(0.5, 2.0), verbose=True)
 
