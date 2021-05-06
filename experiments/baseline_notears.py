@@ -7,6 +7,7 @@ from scipy.special import expit as sigmoid
 from multidag.dag_utils import is_dag, count_accuracy
 from multidag.common.cmd_args import cmd_args
 from multidag.data_generator import Dataset
+from tqdm import tqdm
 
 def notears_linear(X, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+16, w_threshold=0.3):
     """Solve min_W L(W; X) + lambda1 ‖W‖_1 s.t. h(W) = 0 using augmented Lagrangian.
@@ -109,7 +110,7 @@ if __name__ == '__main__':
         os.makedirs(result_save_root)
     result_save_dir = os.path.join(result_save_root, f'notears.pkl')
     model_save_dir = os.path.join(model_save_root, f'notears.pkl')
-    for i in range(X.shape[0]):
+    for i in tqdm(range(X.shape[0])):
         B_true = G[i]
         W_est = notears_linear(X[i], lambda1=0.1, loss_type='l2')
         assert is_dag(W_est)
