@@ -72,7 +72,7 @@ class Trainer:
         """
         progress_bar = tqdm(range(start_epoch, start_epoch + epochs))
         dsc = ''
-        batch_size = min([self.n, 1000 // len(self.K_mask)])
+        batch_size = min([self.n, 100000 // (len(self.K_mask) * self.db.p)])
         X = self.db.load_data(batch_size=batch_size, device=DEVICE)[self.K_mask]
         for e in progress_bar:
             self._train_epoch(e, X, progress_bar, dsc, loss_type)
@@ -97,7 +97,7 @@ class Trainer:
         # -----------------
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
             self.ld += self.c * (10 - (10 - h_D) * ((10 - h_D) > 0))
-            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=20)
+            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=10)
 
         # info
         progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f, one: %.2f] [ld: %.2f, c: %.2f]" %
