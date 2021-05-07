@@ -122,11 +122,12 @@ class Dataset(object):
             if not auto_reset:
                 break
 
-    def load_data(self, device=None):
+    def load_data(self, batch_size=20, device=None):
+        idx = np.random.permutation(self.X.shape[1])[:batch_size]
         if device is None:
-            return self.X
+            return self.X[:, idx]
         else:
-            return self.X.to(device)
+            return self.X[:, idx].to(device)
 
 
 
