@@ -35,7 +35,7 @@ def train_and_evaluate(cmd_args, db, group_size=1):
         trainer = Trainer(g_dag=g_dag, optimizer=g_opt, data_base=db,
                           K_mask=np.arange(i*group_size, (i+1)*group_size))
 
-        state_dict.append(trainer.train(epochs=cmd_args.num_epochs, start_epoch=cmd_args.start_epoch))
+        state_dict.append(trainer.train(epochs=cmd_args.num_epochs + 500 * int(np.log2(cmd_args.n / 10)), start_epoch=cmd_args.start_epoch))
 
         # ---------------------
         #  Eval
