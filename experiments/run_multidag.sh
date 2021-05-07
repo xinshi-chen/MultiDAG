@@ -10,7 +10,7 @@ gpu=(5 6 1 4 0 7)
 num_epoches=4000
 
 for i in ${!p[*]}; do
-  for j in 5; do
+  for j in $1; do
     python main_linear.py \
     -p ${p[i]} \
     -K ${K} \

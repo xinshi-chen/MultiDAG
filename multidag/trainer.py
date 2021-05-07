@@ -97,7 +97,7 @@ class Trainer:
         # -----------------
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
             self.ld += self.c * (10 - (10 - h_D) * ((10 - h_D) > 0))
-            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=10)
+            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=20)
 
         # info
         progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f, one: %.2f] [ld: %.2f, c: %.2f]" %
