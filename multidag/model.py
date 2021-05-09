@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch
+import numpy as np
 from multidag.common.consts import DEVICE
 from multidag.common.utils import weights_init
 from torch.nn.parameter import Parameter
@@ -22,6 +23,12 @@ class G_DAG(nn.Module):
     @property
     def T(self):
         return self._T.to(DEVICE)
+
+    def proximal_update(self, gamma):
+        with torch.no_grad():
+            G_norm = torch.linalg.norm(self.G, ord=2, dim=0, keepdim=True).detach() + 1e-20
+            self._G.data = (self.G * torch.clamp(G_norm - gamma * self.T.abs(), min=0) / G_norm)
+            self._T.data = (torch.sign(self.T) * torch.clamp(self.T.abs() - gamma * G_norm, min=0))
 
     def forward(self, idx):
         return self.g[idx]
