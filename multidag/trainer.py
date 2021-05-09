@@ -51,8 +51,8 @@ class Trainer:
 
         # TODO hyperparameters may be different
         self.hyperparameter = dict()
-        default = {'rho': 0.1 * np.sqrt((self.db.K) / (len(K_mask))), 'lambda': 1.0, 'c': 1.0, 'eta': 0.1,
-                   'mu': 0.0, 'threshold': 2e-1, 'dual_interval': 1}
+        default = {'rho': 0.1, 'lambda': 1.0, 'c': 1.0, 'eta': 0.5, 'gamma': 1e-4,
+                   'mu': 10.0, 'dual_interval': 50}
 
         for key in default:
             if key in hyperparameters:
@@ -63,6 +63,7 @@ class Trainer:
         self.n = data_base.n
 
         # initialize lambda and alpha
+        self.gamma = self.hyperparameter['gamma']
         self.ld = torch.ones(size=[len(K_mask)]).to(DEVICE) * self.hyperparameter['lambda']
         self.c = torch.ones(size=[len(K_mask)]).to(DEVICE) * self.hyperparameter['c']
 
@@ -91,17 +92,17 @@ class Trainer:
         loss.backward()
 
         self.optimizer.step()
-
+        self.g_dag.proximal_update(self.gamma)
         # -----------------
         #  dual step
         # -----------------
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
-            self.ld += self.c * (10 - (10 - h_D) * ((10 - h_D) > 0))
-            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=10)
+            self.ld += self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0))
+            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e9)
 
         # info
         progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f, one: %.2f] [ld: %.2f, c: %.2f]" %
-                                     (log['SE'], log['l1/l2'], log['h_D'], log['conn'], log['one'],
+                                     (log['SE'], log['l1/l2'], log['h_D']*1e6, log['conn']*1e6, log['one'],
                                       self.ld.mean().item(), self.c.mean().item()) + dsc)
         return
 
@@ -127,7 +128,7 @@ class Trainer:
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
-        rho_w_l1 = self.hyperparameter['rho'] * w_l1_l2
+        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt((self.db.K) / (X.shape[0])) * w_l1_l2
 
         loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 
@@ -140,17 +141,15 @@ class Trainer:
         return loss, h_D.mean().item(), log
 
     def save(self):
-        return self.g_dag.state_dict
+        return {'G': self.g_dag.G.detach().cpu().numpy(), 'T': self.g_dag.T.detach().cpu().numpy()}
 
-    def evaluate(self):
-        G_true = np.abs(np.sign(self.db.G[self.K_mask]))
-        G_est = np.abs((self.g_dag.G * self.g_dag.T).detach().cpu().numpy())
-        G_est[G_est < self.hyperparameter['threshold']] = 0
-        G_est = np.sign(G_est)
-        accs = []
-        for k in range(G_true.shape[0]):
-            acc = count_accuracy(G_true[k], G_est[k])
-            accs.append(acc)
-        return accs
-
-
+    # def evaluate(self):
+    #     G_true = np.abs(np.sign(self.db.G[self.K_mask]))
+    #     G_est = np.abs((self.g_dag.G * self.g_dag.T).detach().cpu().numpy())
+    #     G_est[G_est < self.hyperparameter['threshold']] = 0
+    #     G_est = np.sign(G_est)
+    #     accs = []
+    #     for k in range(G_true.shape[0]):
+    #         acc = count_accuracy(G_true[k], G_est[k])
+    #         accs.append(acc)
+    #     return accs
