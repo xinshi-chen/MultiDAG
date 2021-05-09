@@ -141,7 +141,7 @@ class Trainer:
         return loss, h_D.mean().item(), log
 
     def save(self):
-        return {'G': self.g_dag.G.detach().numpy(), 'T': self.g_dag.T.detach().numpy()}
+        return {'G': self.g_dag.G.detach().cpu().numpy(), 'T': self.g_dag.T.detach().cpu().numpy()}
 
     # def evaluate(self):
     #     G_true = np.abs(np.sign(self.db.G[self.K_mask]))
