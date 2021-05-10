@@ -98,7 +98,7 @@ class Trainer:
         # -----------------
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
             self.ld += self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0))
-            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e9)
+            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e8)
 
         # info
         progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f, one: %.2f] [ld: %.2f, c: %.2f]" %
@@ -128,7 +128,7 @@ class Trainer:
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
-        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt((self.db.K) / (X.shape[0])) * w_l1_l2
+        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt((self.db.K) / (2 * X.shape[0])) * w_l1_l2
 
         loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 
