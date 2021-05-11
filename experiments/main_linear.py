@@ -61,7 +61,7 @@ if __name__ == '__main__':
     # check K is the power of 2
     assert (cmd_args.K & (cmd_args.K - 1) == 0) and cmd_args.K != 0
     db = Dataset(p=cmd_args.p,
-                 n=cmd_args.n,
+                 n=cmd_args.n_sample,
                  K=cmd_args.K,
                  s0=cmd_args.s0,
                  s=cmd_args.s,
