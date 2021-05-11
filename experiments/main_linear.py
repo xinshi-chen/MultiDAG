@@ -67,9 +67,5 @@ if __name__ == '__main__':
                  s=cmd_args.s,
                  d=cmd_args.d,
                  w_range=(0.5, 2.0), verbose=True)
-    group_size = 1
-    while group_size <= cmd_args.K:
-        time.sleep(0.1)
-        print(f'*** solving {db.hp}_group_size-{group_size} ***')
-        train(cmd_args, db, group_size=group_size)
-        group_size *= 2
+    print(f'*** solving {db.hp}_group_size-{cmd_args.group_size} ***')
+    train(cmd_args, db, group_size=cmd_args.group_size)

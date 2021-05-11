@@ -14,8 +14,7 @@ cmd_opt.add_argument('-s', type=int, default=15, help='union support size')
 cmd_opt.add_argument('-s0', type=int, default=10, help='support size of each DAG')
 cmd_opt.add_argument('-K', type=int, default=16, help='number of tasks')
 cmd_opt.add_argument('-d', type=int, default=10, help='number of parents')
-cmd_opt.add_argument('--num_g', type=int, default=2, help='number of graphs')
-cmd_opt.add_argument('--num_x', type=int, default=2, help='number of samples')
+cmd_opt.add_argument('--group_size', type=int, default=2, help='group size used in learning')
 
 # hyperparameters for training
 cmd_opt.add_argument('-batch_size', type=int, default=128, help='batch size')
