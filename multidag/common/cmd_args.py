@@ -9,7 +9,7 @@ cmd_opt.add_argument('-seed', type=int, default=999983, help='seed')
 
 # hyperparameters for synthetic distribution
 cmd_opt.add_argument('-p', type=int, default=20, help='dimension of RV')
-cmd_opt.add_argument('-n', type=int, default=30, help='number of observed samples')
+cmd_opt.add_argument('-n_sample', type=int, default=30, help='number of observed samples')
 cmd_opt.add_argument('-s', type=int, default=15, help='union support size')
 cmd_opt.add_argument('-s0', type=int, default=10, help='support size of each DAG')
 cmd_opt.add_argument('-K', type=int, default=16, help='number of tasks')
