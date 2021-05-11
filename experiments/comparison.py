@@ -28,7 +28,7 @@ group_size = 1
 while group_size <= cmd_args.K:
     g_dag = G_DAG(num_dags=group_size, p=cmd_args.p)
     multidag_result = []
-    with open(f'./saved_models/p-{cmd_args.p}_n-{cmd_args.n}_K-{cmd_args.K}_s-{cmd_args.s}_s0-{cmd_args.s0}_'
+    with open(f'./saved_models/p-{cmd_args.p}_n-{cmd_args.n_sample}_K-{cmd_args.K}_s-{cmd_args.s}_s0-{cmd_args.s0}_'
               f'd-{cmd_args.d}_w_range_l-0.5_w_range_u-2.0/rho-{cmd_args.rho}_lambda-{cmd_args.ld}_'
               f'c-{cmd_args.c}_gamma-{cmd_args.gamma}_'
               f'eta-{cmd_args.eta}_mu-{cmd_args.mu}_dual_interval-{cmd_args.dual_interval}/multidag_'
