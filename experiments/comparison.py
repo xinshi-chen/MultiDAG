@@ -18,7 +18,7 @@ title = ['fdr', 'tpr', 'fpr', 'shd', 'nnz']
 #     print(f'{t}: {mean_notear_result[i]:.6f}')
 
 db = Dataset(p=cmd_args.p,
-                 n=cmd_args.n,
+                 n=cmd_args.n_sample,
                  K=cmd_args.K,
                  s0=cmd_args.s0,
                  s=cmd_args.s,
