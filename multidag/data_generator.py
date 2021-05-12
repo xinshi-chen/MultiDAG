@@ -233,7 +233,7 @@ def sampler(G, n):
 if __name__ == '__main__':
     from multidag.common.cmd_args import cmd_args
     db = Dataset(p=cmd_args.p,
-                 n=cmd_args.n,
+                 n=cmd_args.n_sample,
                  K=cmd_args.K,
                  s0=cmd_args.s0,
                  s=cmd_args.s,
