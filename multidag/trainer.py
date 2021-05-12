@@ -116,15 +116,15 @@ class Trainer:
         mu_one = self.hyperparameter['mu'] * one
 
         conn = h_W[self.constraint_type](self.g_dag.T)
-        lambda_conn = ld.mean() * np.sqrt(X.shape[0]) * conn
-        c_conn_2 = 0.5 * np.sqrt(X.shape[0]) * c.mean() * conn ** 2
+        lambda_conn = ld.mean() * np.sqrt(self.db.p/32) * conn
+        c_conn_2 = 0.5 * np.sqrt(self.db.p/32) * c.mean() * conn ** 2
 
         h_D = h_W[self.constraint_type](G_D)
         # if h_D.sum().item() == 0:
         #     for i in range(len(h_D)):
         #         assert is_dag(G_D[i].detach().numpy())
-        lambda_h_wD = (ld * h_D).mean() * np.sqrt(X.shape[0])  # lagrangian term
-        c_hw_2 = 0.5 * np.sqrt(X.shape[0]) * (c * h_D * h_D).mean()  # l2 penalty
+        lambda_h_wD = (ld * h_D).mean() * np.sqrt(self.db.p/32)  # lagrangian term
+        c_hw_2 = 0.5 * np.sqrt(self.db.p/32) * (c * h_D * h_D).mean()  # l2 penalty
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
