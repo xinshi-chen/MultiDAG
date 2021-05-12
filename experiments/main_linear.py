@@ -11,7 +11,7 @@ from multidag.model import G_DAG
 
 
 
-def train(cmd_args, db, group_size=1):
+def train(cmd_args, db, group_size=1, group_start=0):
     random.seed(cmd_args.seed)
     np.random.seed(cmd_args.seed)
     torch.manual_seed(cmd_args.seed)
@@ -25,23 +25,22 @@ def train(cmd_args, db, group_size=1):
         hp += key + '-' + f'{hyperparameter[key]}' + '_'
     hp = hp[:-1]
     models = []
-    for i in range(db.K // group_size):
-        g_dag = G_DAG(num_dags=group_size, p=cmd_args.p).to(DEVICE)
+    K_mask = np.arange(group_start, group_start+group_size)
+    g_dag = G_DAG(num_dags=group_size, p=cmd_args.p).to(DEVICE)
 
-        # ---------------------
-        #  Optimizer
-        # ---------------------
-        g_opt = OPTIMIZER[cmd_args.optimizer](g_dag.parameters(),
-                                              lr=cmd_args.g_lr,
-                                              weight_decay=cmd_args.weight_decay)
-        # ---------------------
-        #  Trainer
-        # ---------------------
-        K_mask = np.arange(i * group_size, (i + 1) * group_size)
-        trainer = Trainer(g_dag=g_dag, optimizer=g_opt, data_base=db,
-                          K_mask=K_mask, hyperparameters=hyperparameter)
+    # ---------------------
+    #  Optimizer
+    # ---------------------
+    g_opt = OPTIMIZER[cmd_args.optimizer](g_dag.parameters(),
+                                          lr=cmd_args.g_lr,
+                                          weight_decay=cmd_args.weight_decay)
+    # ---------------------
+    #  Trainer
+    # ---------------------
+    trainer = Trainer(g_dag=g_dag, optimizer=g_opt, data_base=db,
+                      K_mask=K_mask, hyperparameters=hyperparameter)
 
-        models.append(trainer.train(epochs=cmd_args.num_epochs, start_epoch=cmd_args.start_epoch))
+    models.append(trainer.train(epochs=cmd_args.num_epochs, start_epoch=cmd_args.start_epoch))
 
     # --------------------------
     #  save model and results
@@ -49,7 +48,7 @@ def train(cmd_args, db, group_size=1):
     model_save_root = './saved_models/' + db.hp + '/' + hp
     if not os.path.isdir(model_save_root):
         os.makedirs(model_save_root)
-    name = f'multidag_group_size-{group_size}.pkl'
+    name = f'multidag_group_size-{group_size}-{group_start}-{group_start+group_size}.pkl'
     model_save_dir = model_save_root + '/' + name
     with open(model_save_dir, 'wb') as handle:
         pickle.dump(models, handle)
@@ -68,4 +67,5 @@ if __name__ == '__main__':
                  d=cmd_args.d,
                  w_range=(0.5, 2.0), verbose=True)
     print(f'*** solving {db.hp}_group_size-{cmd_args.group_size} ***')
-    train(cmd_args, db, group_size=cmd_args.group_size)
+
+    train(cmd_args, db, group_size=cmd_args.group_size, group_start=cmd_args.group_start)
