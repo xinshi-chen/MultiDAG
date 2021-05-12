@@ -128,7 +128,7 @@ class Trainer:
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
-        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt((self.db.K) / (2 * X.shape[0])) * w_l1_l2
+        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt((self.db.K) / (X.shape[0])) * w_l1_l2
 
         loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 
