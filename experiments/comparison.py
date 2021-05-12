@@ -34,7 +34,7 @@ while group_size <= cmd_args.K:
                   f'c-{cmd_args.c}_gamma-{cmd_args.gamma}_'
                   f'eta-{cmd_args.eta}_mu-{cmd_args.mu}_dual_interval-{cmd_args.dual_interval}/multidag_'
                   f'group_size-{group_size}-{i * group_size}-{(i+1) * group_size}.pkl', 'rb') as handle:
-            model = pickle.load(handle)
+            model = pickle.load(handle)[0]
         K_mask = np.arange(i * group_size, (i + 1) * group_size)
         G_true = np.abs(np.sign(db.G[K_mask]))
         G_est = np.abs(model['G'] * model['T'])
