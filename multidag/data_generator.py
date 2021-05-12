@@ -172,13 +172,13 @@ def random_G(p, s, s0, d, K, w_range: tuple = (0.5, 2.0)):
                 else:
                     G[k] = 0
                     count_k += 1
-                    if count_k > 10:
+                    if count_k > 1e4:
                         raise ValueError('Please improve the sample strategy for G[k]')
         if (G.sum(axis=0) >= S).all():
             break
         else:
             count_g += 1
-            if count_g > 10:
+            if count_g > 1e4:
                 raise ValueError('Please improve the sample strategy for G')
 
     # permutation matrix
