@@ -8,6 +8,7 @@ import random
 import numpy as np
 import time
 from multidag.model import G_DAG
+from multidag.sergio_dataset import SergioDataset
 
 
 
@@ -58,14 +59,17 @@ def train(cmd_args, db, group_size=1, group_start=0):
 
 if __name__ == '__main__':
     # check K is the power of 2
-    assert (cmd_args.K & (cmd_args.K - 1) == 0) and cmd_args.K != 0
-    db = Dataset(p=cmd_args.p,
-                 n=cmd_args.n_sample,
-                 K=cmd_args.K,
-                 s0=cmd_args.s0,
-                 s=cmd_args.s,
-                 d=cmd_args.d,
-                 w_range=(0.5, 2.0), verbose=True)
+    if cmd_args.real_dir:
+        db = SergioDataset(cmd_args.real_dir)
+    else:
+        assert (cmd_args.K & (cmd_args.K - 1) == 0) and cmd_args.K != 0
+        db = Dataset(p=cmd_args.p,
+                     n=cmd_args.n_sample,
+                     K=cmd_args.K,
+                     s0=cmd_args.s0,
+                     s=cmd_args.s,
+                     d=cmd_args.d,
+                     w_range=(0.5, 2.0), verbose=True)
     print(f'*** solving {db.hp}_group_size-{cmd_args.group_size} ***')
 
     train(cmd_args, db, group_size=cmd_args.group_size, group_start=cmd_args.group_start)

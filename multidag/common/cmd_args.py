@@ -8,6 +8,7 @@ cmd_opt.add_argument('-seed', type=int, default=999983, help='seed')
 
 
 # hyperparameters for synthetic distribution
+cmd_opt.add_argument('--real_dir', type=str, default='', help='dir of real data')
 cmd_opt.add_argument('-p', type=int, default=20, help='dimension of RV')
 cmd_opt.add_argument('-n_sample', type=int, default=30, help='number of observed samples')
 cmd_opt.add_argument('-s', type=int, default=15, help='union support size')
@@ -32,10 +33,10 @@ cmd_opt.add_argument('--hw_type', type=str, default='notears', choices=['notears
 cmd_opt.add_argument('-rho', type=float, default=0.1)
 cmd_opt.add_argument('-ld', type=float, default=10)
 cmd_opt.add_argument('-c', type=float, default=10)
-cmd_opt.add_argument('-eta', type=float, default=0.5)
-cmd_opt.add_argument('-mu', type=float, default=10)
+cmd_opt.add_argument('-eta', type=float, default=0.2)
+cmd_opt.add_argument('-mu', type=float, default=0)
 cmd_opt.add_argument('-gamma', type=float, default=1e-5)
-cmd_opt.add_argument('--dual_interval', type=int, default=50)
+cmd_opt.add_argument('--dual_interval', type=int, default=20)
 cmd_opt.add_argument('--threshold', type=float, default=0.3)
 
 cmd_opt.add_argument('-phase', type=str, default='train')
