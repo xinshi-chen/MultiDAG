@@ -97,10 +97,10 @@ class Trainer:
         #  dual step
         # -----------------
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
-            self.hyperparameter['rho'] += np.clip(1e-3 * (self.db.p - log['SE']),
-                                                  a_min=-self.hyperparameter['rho'] / 10, a_max=1)
+            self.hyperparameter['rho'] += np.clip(0.1 * (self.db.p - log['SE']),
+                                                  a_min=-self.hyperparameter['rho'] / 10, a_max=0.1)
             self.ld += self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0))
-            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
+            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e12)
 
         # info
         progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f, one: %.2f] [ld: %.2f, c: %.2f]" %
