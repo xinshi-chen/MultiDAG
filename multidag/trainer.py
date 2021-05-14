@@ -92,11 +92,13 @@ class Trainer:
         loss.backward()
 
         self.optimizer.step()
-        self.g_dag.proximal_update(self.gamma)
+        self.g_dag.proximal_update(self.gamma / (self.db.p / 32))
         # -----------------
         #  dual step
         # -----------------
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
+            self.hyperparameter['rho'] += np.clip(1e-3 * (self.db.p - log['SE']),
+                                                  a_min=-self.hyperparameter['rho'] / 10, a_max=1)
             self.ld += self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0))
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e8)
 
@@ -128,8 +130,7 @@ class Trainer:
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
-        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt((self.db.K) / (X.shape[0])) * \
-                   np.sqrt(self.db.p * np.log(32) / (32 * np.log(self.db.p))) * w_l1_l2
+        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt((self.db.K) / (X.shape[0])) * w_l1_l2
 
         loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 
