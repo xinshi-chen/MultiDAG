@@ -38,7 +38,7 @@ while group_size <= cmd_args.K:
         K_mask = np.arange(i * group_size, (i + 1) * group_size)
         G_true = np.abs(np.sign(db.G[K_mask]))
         G_est = np.abs(model['G'] * model['T'])
-        G_est[G_est < 0.25 + 0.05 * (np.log2(cmd_args.n_sample/20))] = 0
+        G_est[G_est < cmd_args.threshold] = 0
         G_est = np.sign(G_est)
         for k in range(G_true.shape[0]):
             r = count_accuracy(G_true[k], G_est[k])
