@@ -52,7 +52,7 @@ class Trainer:
         # TODO hyperparameters may be different
         self.hyperparameter = dict()
         default = {'rho': 0.1, 'lambda': 1.0, 'c': 1.0, 'eta': 0.5, 'gamma': 1e-4,
-                   'mu': 10.0, 'dual_interval': 50}
+                   'mu': 10.0, 'dual_interval': 50, 'init':  1}
 
         for key in default:
             if key in hyperparameters:
@@ -98,8 +98,10 @@ class Trainer:
         # -----------------
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
             self.gamma *= 0.99
+            for param_group in self.optimizer.param_groups:
+                param_group['lr'] *= 0.99
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
-            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e10)
+            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
 
         # info
         progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f, one: %.2f] [ld: %.2f, c: %.2f]" %
@@ -129,8 +131,8 @@ class Trainer:
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
-        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt(self.db.p * np.log(self.db.p) / self.db.n /
-                   (1 + (X.shape[0] - 1) * (1.4 - 0.5 * X.shape[0] / self.db.K) * self.db.s0 / self.db.s)) * w_l1_l2
+        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt(self.db.p * np.log(self.db.p) / np.sqrt(self.db.n) /
+                   (1 + (X.shape[0] - 1) * (1.5 - 0.5 * X.shape[0] / self.db.K) * self.db.s0 / self.db.s)) * w_l1_l2
 
         loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 

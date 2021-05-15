@@ -71,5 +71,5 @@ if __name__ == '__main__':
                      d=cmd_args.d,
                      w_range=(0.5, 2.0), verbose=True)
     print(f'*** solving {db.hp}_group_size-{cmd_args.group_size} ***')
-
+    print(np.linalg.norm(db.G[:cmd_args.group_size], axis=0).sum())
     train(cmd_args, db, group_size=cmd_args.group_size, group_start=cmd_args.group_start)
