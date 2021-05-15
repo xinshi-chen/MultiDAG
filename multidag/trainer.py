@@ -92,11 +92,12 @@ class Trainer:
         loss.backward()
 
         self.optimizer.step()
-        self.g_dag.proximal_update(self.gamma / (self.db.p / 32))
+        self.g_dag.proximal_update(self.gamma)
         # -----------------
         #  dual step
         # -----------------
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
+            self.gamma *= 0.99
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e10)
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e10)
 
@@ -113,7 +114,7 @@ class Trainer:
 
         # dagness constraints
         one = (self.g_dag.T - 1).abs().mean()
-        mu_one = self.hyperparameter['mu'] * one
+        mu_one = self.hyperparameter['mu'] * self.db.p * one
 
         conn = h_W[self.constraint_type](self.g_dag.T)
         lambda_conn = ld.mean() * conn * self.db.p
@@ -123,14 +124,15 @@ class Trainer:
         # if h_D.sum().item() == 0:
         #     for i in range(len(h_D)):
         #         assert is_dag(G_D[i].detach().numpy())
-        lambda_h_wD = (ld * h_D).mean() * self.db.p   # lagrangian term
-        c_hw_2 = 0.5 * (c * h_D * h_D).mean() * self.db.p  # l2 penalty
+        # lambda_h_wD = 0 * (ld * h_D).mean() * self.db.p   # lagrangian term
+        # c_hw_2 = 0 * 0.5 * (c * h_D * h_D).mean() * self.db.p  # l2 penalty
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
-        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt(self.db.p * np.log(self.db.p) / self.db.n / X.shape[0]) * w_l1_l2
+        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt(self.db.p * np.log(self.db.p) / self.db.n /
+                                                        (1 + (X.shape[0] - 1) * self.db.s0 / self.db.s)) * w_l1_l2
 
-        loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
+        loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 # + lambda_h_wD + c_hw_2
 
         log = {'SE': loss_se.item(),
                'l1/l2': w_l1_l2.item(),
@@ -138,7 +140,7 @@ class Trainer:
                'conn': conn.item(),
                'one': one.item()
                }
-        return loss, h_D.mean().item(), log
+        return loss, conn.item(), log
 
     def save(self):
         return {'G': self.g_dag.G.detach().cpu().numpy(), 'T': self.g_dag.T.detach().cpu().numpy()}
