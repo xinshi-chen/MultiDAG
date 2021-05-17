@@ -12,7 +12,7 @@ from multidag.sergio_dataset import SergioDataset
 
 
 
-def train(cmd_args, db, group_size=1, group_start=0):
+def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
     random.seed(cmd_args.seed)
     np.random.seed(cmd_args.seed)
     torch.manual_seed(cmd_args.seed)
@@ -20,7 +20,7 @@ def train(cmd_args, db, group_size=1, group_start=0):
     # G_DAG
     assert group_size <= db.K
     hyperparameter = {'rho': cmd_args.rho, 'lambda': cmd_args.ld, 'c': cmd_args.c, 'gamma': cmd_args.gamma,
-                      'eta': cmd_args.eta, 'mu': cmd_args.mu, 'dual_interval': cmd_args.dual_interval}
+                      'eta': cmd_args.eta, 'dual_interval': cmd_args.dual_interval}
     hp = ''
     for key in hyperparameter:
         hp += key + '-' + f'{hyperparameter[key]}' + '_'
@@ -41,7 +41,7 @@ def train(cmd_args, db, group_size=1, group_start=0):
     # ---------------------
     #  Trainer
     # ---------------------
-    trainer = Trainer(g_dag=g_dag, optimizer=g_opt, data_base=db,
+    trainer = Trainer(se=real_se, gn=real_gn, g_dag=g_dag, optimizer=g_opt, data_base=db,
                       K_mask=K_mask, hyperparameters=hyperparameter)
 
     models.append(trainer.train(epochs=cmd_args.num_epochs, start_epoch=cmd_args.start_epoch))
@@ -76,6 +76,8 @@ if __name__ == '__main__':
     print(f'*** solving {db.hp}_group_size-{cmd_args.group_size} ***')
     X = db.X[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size].detach().numpy()
     G = db.G[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size]
-    print('real se: ', np.square(X - X@G).sum(axis=-1).mean())
-    print('real group norm: ', np.linalg.norm(G, axis=0).sum())
-    train(cmd_args, db, group_size=cmd_args.group_size, group_start=cmd_args.group_start)
+    real_se = np.square(X - X@G).sum(axis=-1).mean()
+    real_gn = np.linalg.norm(G, axis=0).sum()
+    print('real se: ', real_se)
+    print('real group norm: ', real_gn)
+    train(cmd_args, db, real_se, real_gn, group_size=cmd_args.group_size, group_start=cmd_args.group_start)
