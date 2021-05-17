@@ -27,7 +27,10 @@ def train(cmd_args, db, group_size=1, group_start=0):
     hp = hp[:-1]
     models = []
     K_mask = np.arange(group_start, group_start+group_size)
-    g_dag = G_DAG(num_dags=group_size, p=cmd_args.p).to(DEVICE)
+    if cmd_args.real_dir:
+        g_dag = G_DAG(num_dags=group_size, p=db.p).to(DEVICE)
+    else:
+        g_dag = G_DAG(num_dags=group_size, p=cmd_args.p).to(DEVICE)
 
     # ---------------------
     #  Optimizer
