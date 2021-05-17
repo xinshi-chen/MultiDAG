@@ -1,0 +1,16 @@
+#PBS -N trainer
+#PBS -l nodes=1:ppn=16
+#PBS -l walltime=2:00:00
+#PBS -l pmem=8gb
+#PBS -q hive
+#PBS -j oe
+#PBS -o outs/p-32.out
+#PBS -t 1-378
+
+
+cd $PBS_O_WORKDIR
+module load anaconda3
+conda activate basic
+cat configs/file_${PBS_ARRAYID}.txt
+cat configs/file_${PBS_ARRAYID}.txt | xargs python main_linear.py
+
