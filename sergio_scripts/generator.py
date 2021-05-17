@@ -1,6 +1,8 @@
-import numpy as np
+import argparse
 import os
 import networkx as nx
+import numpy as np
+
 from sergio import sergio
 
 
@@ -36,13 +38,14 @@ def _read_dot(dotpath, w_range: tuple = (0.5, 2.0)):
 def _perturb(T, n_perturbs, w_range: tuple = (0.5, 2.0)):
     """
     Sample K dags with the same topological ordering as G
-    with <perm> edges added per sample
+    with <n_perturbs> edges added and <n_perturbs> edges
+    removed per sample
     """
     toposort = np.array(list(nx.lexicographical_topological_sort(T)))
     indegree = np.array(list(dict(T.in_degree(toposort)).values()))
     MR_idx = indegree == 0
     g = nx.DiGraph(T)
-    for _ in range(n_perturbs):
+    for _ in range(n_perturbs):  # add n_perturbs edges
         # Get parent-child pair that doesn't violate topological order or MRs
         parent_i = np.random.choice(len(toposort) - 1)
         potential_children = (toposort[parent_i + 1:])[~MR_idx[parent_i + 1:]]
@@ -53,6 +56,9 @@ def _perturb(T, n_perturbs, w_range: tuple = (0.5, 2.0)):
         weight *= sign
         g.add_edge(parent, child, weight=weight)
         assert list(nx.lexicographical_topological_sort(T)) == list(nx.lexicographical_topological_sort(g))
+    for _ in range(n_perturbs):  # remove n_pertrubs edges, preserve expected sparsity
+        remove_i = np.random.choice(len(g.edges))
+        g.remove_edge(*list(g.edges)[remove_i])
     return g
 
 
@@ -98,17 +104,25 @@ def _simulate_sergio(G, n_samples, hill=2, mr_range: tuple = (0.5, 2.0)):
 
 
 if __name__ == '__main__':
-    # TODO: bash script,
-    dotpath = '../../SERGIO/GNW_sampled_GRNs/Ecoli_100_net1.dot'
-    outpath = 'test.npz'
-    K = 2
-    n = 100
-    hill = 2
-    T = _read_dot(dotpath)
-    G = [_perturb(T, 10) for _ in range(K)]
-    exprs = [_simulate_sergio(g, n) for g in G]
+    cmd_opt = argparse.ArgumentParser(description='')
+    cmd_opt.add_argument('-dot_path', type=str, default='./regulatory_networks/Ecoli_100_net1.dot', help='path to GRN .dot file')
+    cmd_opt.add_argument('-save_dir', type=str, default='./simulations/', help='directory to save simulation')
+    cmd_opt.add_argument('-K', type=int, default=10, help='number of tasks')
+    cmd_opt.add_argument('-e', type=int, default=10, help='number of edge perturbations to make per task')
+    cmd_opt.add_argument('-n', type=int, default=300, help='number of samples per task')
+    cmd_opt.add_argument('-nh', type=int, default=2, help='hill coefficient for SERGIO')
+    args = cmd_opt.parse_args()
+
+    T = _read_dot(args.dot_path)
+    p = len(T.nodes)
+    G = [_perturb(T, args.e) for _ in range(args.K)]
+    exprs = [_simulate_sergio(g, args.n, hill=args.nh) for g in G]
     expr_mat = np.concatenate([expr for expr in exprs], axis=-1).T
-    task_labels = [i // n for i in range(len(G) * n)]
+    task_labels = [i // args.n for i in range(len(G) * args.n)]
     T_adj = nx.convert_matrix.to_numpy_matrix(T)
     G_adj = [nx.convert_matrix.to_numpy_matrix(g) for g in G]
-    np.savez(outpath, expression=expr_mat, task_labels=task_labels, task_adjacencies=G_adj, true_adjacency=T_adj)
+
+    if not os.path.isdir(args.save_dir):
+        os.mkdir(args.save_dir)
+    savepath = os.path.join(args.save_dir, f"sergio_K-{args.K}_p-{p}_e-{args.e}_n-{args.n}_nh-{args.nh}.npz")
+    np.savez(savepath, expression=expr_mat, task_labels=task_labels, task_adjacencies=G_adj, true_adjacency=T_adj)
