@@ -34,9 +34,10 @@ def W_dist(w1, w2, norm='l1'):
 
 
 class Trainer:
-    def __init__(self, g_dag, optimizer, data_base, constraint_type='notears',
+    def __init__(self, se, gn, g_dag, optimizer, data_base, constraint_type='notears',
                  K_mask=None, hyperparameters={}):
-
+        self.se = se
+        self.gn = gn
         self.g_dag = g_dag
         self.db = data_base
         if K_mask is None:
@@ -78,6 +79,7 @@ class Trainer:
         X = self.db.load_data(batch_size=batch_size, device=DEVICE)[self.K_mask]
         for e in progress_bar:
             self._train_epoch(e, X, progress_bar, dsc, loss_type)
+        print('final use rho = {:.4f}'.format(self.rho))
         return self.save()
 
     def _train_epoch(self, epoch, X, progress_bar, dsc, loss_type):
@@ -101,7 +103,9 @@ class Trainer:
             self.gamma *= 0.99
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
-            if log['SE'] < self.db.p * 0.9:
+            if log['SE'] / self.se > log['l1/l2'] / self.gn + 0.05:
+                self.rho *= 0.9
+            elif log['SE'] / self.se < log['l1/l2'] / self.gn - 0.05:
                 self.rho *= 1.1
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
@@ -135,7 +139,7 @@ class Trainer:
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
         rho_w_l1 = self.rho * np.sqrt(self.db.p * np.log(self.db.p) / self.db.n /
-                   X.shape[0] ** (5/3)) * w_l1_l2
+                   X.shape[0] ** 2) * w_l1_l2
 
         loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 
