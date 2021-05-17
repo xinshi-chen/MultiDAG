@@ -64,6 +64,7 @@ class Trainer:
 
         # initialize lambda and alpha
         self.gamma = self.hyperparameter['gamma']
+        self.rho = self.hyperparameter['rho']
         self.ld = torch.ones(size=[len(K_mask)]).to(DEVICE) * self.hyperparameter['lambda']
         self.c = torch.ones(size=[len(K_mask)]).to(DEVICE) * self.hyperparameter['c']
 
@@ -100,6 +101,8 @@ class Trainer:
             self.gamma *= 0.99
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
+            if log['SE'] < self.db.p * 0.9:
+                self.rho *= 1.1
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
 
@@ -131,8 +134,8 @@ class Trainer:
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
-        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt(self.db.p * np.log(self.db.p) / np.sqrt(self.db.n) /
-                   (1 + (X.shape[0] - 1) * (1.5 - 0.5 * X.shape[0] / self.db.K) * self.db.s0 / self.db.s)) * w_l1_l2
+        rho_w_l1 = self.rho * np.sqrt(self.db.p * np.log(self.db.p) / self.db.n /
+                   X.shape[0]) * w_l1_l2
 
         loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 

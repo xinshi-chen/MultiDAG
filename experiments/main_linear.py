@@ -71,5 +71,8 @@ if __name__ == '__main__':
                      d=cmd_args.d,
                      w_range=(0.5, 2.0), verbose=True)
     print(f'*** solving {db.hp}_group_size-{cmd_args.group_size} ***')
-    print(np.linalg.norm(db.G[:cmd_args.group_size], axis=0).sum())
+    X = db.X[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size].detach().numpy()
+    G = db.G[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size]
+    print('real se: ', np.square(X - X@G).sum(axis=-1).mean())
+    print('real group norm: ', np.linalg.norm(G, axis=0).sum())
     train(cmd_args, db, group_size=cmd_args.group_size, group_start=cmd_args.group_start)
