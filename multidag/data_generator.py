@@ -146,6 +146,7 @@ class SergioDataset(object):
 
         # hyper-parameters
         self.n = n
+        self.p = 100
         self.K = K
         self.perms = perms
         self.w_range = w_range
@@ -197,8 +198,16 @@ class SergioDataset(object):
                 self.X = pkl.load(f)
         else:
             self.X, _ = self._sergio_simulate_all(sergio_path, self.Perm_nx, n)
+            self.X = torch.Tensor(self.X.reshape(self.K, -1, self.X.shape[-1]))
             with open(data_pkl, 'wb') as f:
                 pkl.dump(self.X, f)
+
+    def load_data(self, batch_size, device=None):
+        idx = np.random.permutation(self.X.shape[1])[:batch_size]
+        if device is None:
+            return self.X[:, idx]
+        else:
+            return self.X[:, idx].to(device)
 
     def _read_dot(self, dotpath, w_range: tuple = (0.5, 2.0)):
         """
