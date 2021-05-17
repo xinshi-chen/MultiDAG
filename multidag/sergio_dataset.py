@@ -16,7 +16,7 @@ class SergioDataset(object):
         self.X = data['expression']
         self.X = torch.Tensor(self.X.reshape(self.K, -1, self.X.shape[-1]))
         self.G = data['task_adjacencies']
-        self.T = data['true_adjacency']
+        self.T = np.expand_dims(data['true_adjacency'], 0)
         self.n = self.X.shape[1]
         self.p = self.X.shape[2]
         self.hp = os.path.basename(dir)
