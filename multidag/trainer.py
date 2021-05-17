@@ -52,7 +52,7 @@ class Trainer:
         # TODO hyperparameters may be different
         self.hyperparameter = dict()
         default = {'rho': 0.1, 'lambda': 1.0, 'c': 1.0, 'eta': 0.5, 'gamma': 1e-4,
-                   'mu': 10.0, 'dual_interval': 50}
+                   'mu': 10.0, 'dual_interval': 50, 'init':  1}
 
         for key in default:
             if key in hyperparameters:
@@ -64,6 +64,7 @@ class Trainer:
 
         # initialize lambda and alpha
         self.gamma = self.hyperparameter['gamma']
+        self.rho = self.hyperparameter['rho']
         self.ld = torch.ones(size=[len(K_mask)]).to(DEVICE) * self.hyperparameter['lambda']
         self.c = torch.ones(size=[len(K_mask)]).to(DEVICE) * self.hyperparameter['c']
 
@@ -97,12 +98,17 @@ class Trainer:
         #  dual step
         # -----------------
         if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
-            self.ld += self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0))
-            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e9)
+            self.gamma *= 0.99
+            for param_group in self.optimizer.param_groups:
+                param_group['lr'] *= 0.99
+            if log['SE'] < self.db.p * 0.9:
+                self.rho *= 1.1
+            self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
+            self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
 
         # info
         progress_bar.set_description("[SE: %.2f] [l1/l2: %.2f] [hw: %.2f] [conn: %.2f, one: %.2f] [ld: %.2f, c: %.2f]" %
-                                     (log['SE'], log['l1/l2'], log['h_D']*1e6, log['conn']*1e6, log['one'],
+                                     (log['SE'], log['l1/l2'], log['h_D']*1e8, log['conn']*1e8, log['one'],
                                       self.ld.mean().item(), self.c.mean().item()) + dsc)
         return
 
@@ -116,19 +122,20 @@ class Trainer:
         mu_one = self.hyperparameter['mu'] * one
 
         conn = h_W[self.constraint_type](self.g_dag.T)
-        lambda_conn = ld.mean() * conn
-        c_conn_2 = 0.5 * c.mean() * conn ** 2
+        lambda_conn = ld.mean() * conn * self.db.p
+        c_conn_2 = 0.5 * c.mean() * conn ** 2 * self.db.p
 
         h_D = h_W[self.constraint_type](G_D)
         # if h_D.sum().item() == 0:
         #     for i in range(len(h_D)):
         #         assert is_dag(G_D[i].detach().numpy())
-        lambda_h_wD = (ld * h_D).mean()  # lagrangian term
+        lambda_h_wD = (ld * h_D).mean()   # lagrangian term
         c_hw_2 = 0.5 * (c * h_D * h_D).mean()  # l2 penalty
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
-        rho_w_l1 = self.hyperparameter['rho'] * np.sqrt((self.db.K) / (X.shape[0])) * w_l1_l2
+        rho_w_l1 = self.rho * np.sqrt(self.db.p * np.log(self.db.p) / self.db.n /
+                   X.shape[0]) * w_l1_l2
 
         loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 

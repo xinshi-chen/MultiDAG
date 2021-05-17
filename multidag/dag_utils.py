@@ -296,7 +296,7 @@ def count_accuracy(B_true, B_est):
         if not ((B_est == 0) | (B_est == 1)).all():
             raise ValueError('B_est should take value in {0,1}')
         if not is_dag(B_est):
-            B_est, _ = project_notears(B_est)
+            B_est, _ = project_to_dag(B_est)
             if B_est is None:
                 raise ValueError('B_est should be a DAG, fail to project to DAG')
             else:
