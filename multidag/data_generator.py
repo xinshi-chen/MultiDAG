@@ -130,8 +130,6 @@ class Dataset(object):
             return self.X[:, idx].to(device)
 
 
-
-
 def random_G(p, s, s0, d, K, w_range: tuple = (0.5, 2.0)):
     """
     p: dimension
