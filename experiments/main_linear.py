@@ -32,6 +32,9 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
     else:
         g_dag = G_DAG(num_dags=group_size, p=cmd_args.p).to(DEVICE)
 
+    if cmd_args.ld >= 1e2 and cmd_args.c >= 1e2:
+        g_dag.T = db.Perm
+
     # ---------------------
     #  Optimizer
     # ---------------------
