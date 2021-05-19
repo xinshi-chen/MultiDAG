@@ -126,8 +126,8 @@ class Trainer:
         mu_one = self.hyperparameter['mu'] * one
 
         conn = h_W[self.constraint_type](self.g_dag.T)
-        lambda_conn = ld.mean() * conn * self.db.p
-        c_conn_2 = 0.5 * c.mean() * conn ** 2 * self.db.p
+        lambda_conn = ld.mean() * conn * self.db.p * X.shape[0]
+        c_conn_2 = 0.5 * c.mean() * conn ** 2 * self.db.p * X.shape[0]
 
         h_D = h_W[self.constraint_type](G_D)
         # if h_D.sum().item() == 0:
