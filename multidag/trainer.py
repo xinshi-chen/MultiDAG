@@ -133,8 +133,8 @@ class Trainer:
         # if h_D.sum().item() == 0:
         #     for i in range(len(h_D)):
         #         assert is_dag(G_D[i].detach().numpy())
-        lambda_h_wD = (ld * h_D).mean()   # lagrangian term
-        c_hw_2 = 0.5 * (c * h_D * h_D).mean()  # l2 penalty
+        lambda_h_wD = (ld * h_D).mean() * self.db.p * X.shape[0]  # lagrangian term
+        c_hw_2 = 0.5 * (c * h_D * h_D).mean() * self.db.p * X.shape[0] # l2 penalty
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
