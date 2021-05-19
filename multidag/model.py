@@ -27,7 +27,7 @@ class G_DAG(nn.Module):
     @T.setter
     def T(self, perm):
         B = np.tril(np.ones([self.p, self.p]), k=-1)
-        target = perm.T.dot(B).dot(perm) + np.random.rand(self.p, self.p) * 0.02
+        target = perm.T.dot(B).dot(perm) + np.random.rand(self.p, self.p) * 0.1
         with torch.no_grad():
             self._T.data = torch.DoubleTensor(target).unsqueeze(0)
         print('### initialize T ###')
