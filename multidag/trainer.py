@@ -104,9 +104,9 @@ class Trainer:
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
             if log['SE'] / self.se > log['l1/l2'] / self.gn + 0.05:
-                self.rho *= 0.9
+                self.rho *= 0.95
             elif log['SE'] / self.se < log['l1/l2'] / self.gn - 0.05:
-                self.rho *= 1.1
+                self.rho *= 1.05
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
 
