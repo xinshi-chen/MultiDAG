@@ -68,7 +68,6 @@ if __name__ == '__main__':
     if cmd_args.real_dir:
         db = SergioDataset(cmd_args.real_dir)
     else:
-        assert (cmd_args.K & (cmd_args.K - 1) == 0) and cmd_args.K != 0
         db = Dataset(p=cmd_args.p,
                      n=cmd_args.n_sample,
                      K=cmd_args.K,
