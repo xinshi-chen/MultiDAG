@@ -20,7 +20,8 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
     # G_DAG
     assert group_size <= db.K
     hyperparameter = {'rho': cmd_args.rho, 'lambda': cmd_args.ld, 'c': cmd_args.c, 'gamma': cmd_args.gamma,
-                      'eta': cmd_args.eta, 'mu': cmd_args.mu, 'dual_interval': cmd_args.dual_interval}
+                      'eta': cmd_args.eta, 'mu': cmd_args.mu, 'dual_interval': cmd_args.dual_interval,
+                      'alpha': cmd_args.alpha}
     hp = ''
     for key in hyperparameter:
         hp += key + '-' + f'{hyperparameter[key]}' + '_'
@@ -31,9 +32,6 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
         g_dag = G_DAG(num_dags=group_size, p=db.p).to(DEVICE)
     else:
         g_dag = G_DAG(num_dags=group_size, p=cmd_args.p).to(DEVICE)
-
-    if cmd_args.ld > 1 and cmd_args.c > 1:
-        g_dag.T = db.Perm
 
     # ---------------------
     #  Optimizer

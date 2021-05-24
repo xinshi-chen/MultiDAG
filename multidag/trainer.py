@@ -53,7 +53,7 @@ class Trainer:
         # TODO hyperparameters may be different
         self.hyperparameter = dict()
         default = {'rho': 0.1, 'lambda': 1.0, 'c': 1.0, 'eta': 0.5, 'gamma': 1e-4,
-                   'mu': 10.0, 'dual_interval': 50, 'init':  1}
+                   'mu': 10.0, 'dual_interval': 50, 'init': 1, 'alpha': 0}
 
         for key in default:
             if key in hyperparameters:
@@ -103,10 +103,11 @@ class Trainer:
             self.gamma *= 0.99
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
-            if log['SE'] / self.se > 1.05:
-                self.rho *= 0.95
-            elif log['SE'] / self.se < 0.95:
-                self.rho *= 1.05
+            if epoch > 10000:
+                if log['SE'] / self.se > 1:
+                    self.rho *= 0.99
+                elif log['SE'] / self.se < 0.9:
+                    self.rho *= 1.01
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
 
@@ -133,6 +134,7 @@ class Trainer:
         # if h_D.sum().item() == 0:
         #     for i in range(len(h_D)):
         #         assert is_dag(G_D[i].detach().numpy())
+
         lambda_h_wD = (ld * h_D).mean() * self.db.p  # lagrangian term
         c_hw_2 = 0.5 * (c * h_D * h_D).mean() * self.db.p # l2 penalty
 
@@ -140,7 +142,8 @@ class Trainer:
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
         rho_w_l1 = self.rho * w_l1_l2 / X.shape[0] / (self.db.n / 10)
 
-        loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
+        loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + \
+               self.hyperparameter['alpha'] * (lambda_h_wD + c_hw_2)
 
         log = {'SE': loss_se.item(),
                'l1/l2': w_l1_l2.item(),
@@ -148,7 +151,7 @@ class Trainer:
                'conn': conn.item(),
                'one': one.item()
                }
-        return loss, h_D.mean().item(), log
+        return loss, conn.mean().item(), log
 
     def save(self):
         return {'G': self.g_dag.G.detach().cpu().numpy(), 'T': self.g_dag.T.detach().cpu().numpy()}

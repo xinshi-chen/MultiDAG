@@ -22,7 +22,7 @@ cmd_opt.add_argument('--group_start', type=int, default=0)
 cmd_opt.add_argument('-batch_size', type=int, default=128, help='batch size')
 cmd_opt.add_argument('-g_lr', type=float, default=1e-3, help='learning rate of G_DAG')
 
-cmd_opt.add_argument('-weight_decay', type=float, default=1e-5)
+cmd_opt.add_argument('-weight_decay', type=float, default=0)
 cmd_opt.add_argument('-num_epochs', type=int, default=20000, help='num epochs')
 cmd_opt.add_argument('-optimizer', type=str, default='adam')
 
@@ -36,7 +36,7 @@ cmd_opt.add_argument('-c', type=float, default=1)
 cmd_opt.add_argument('-eta', type=float, default=0.412)
 cmd_opt.add_argument('-mu', type=float, default=1)
 cmd_opt.add_argument('-gamma', type=float, default=1e-5)
-# cmd_opt.add_argument('-gamma', type=float, default=0)
+cmd_opt.add_argument('-alpha', type=float, default=0)
 cmd_opt.add_argument('--dual_interval', type=int, default=50)
 cmd_opt.add_argument('--threshold', type=float, default=0.3)
 
