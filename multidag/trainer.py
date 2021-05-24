@@ -160,12 +160,20 @@ class Trainer:
     def get_loss(self, X, ld, c):
         G_D = self.g_dag.G * self.g_dag.T
 
-        # Get G_D * X
-        GX = torch.einsum('bji,bnj->bnij', G_D, X)  # [K, n, d, d] tensor
-        GX = torch.sum(GX, dim=-1, keepdim=True)  # [K, n, d, 1]
+        # Version 1: G in last layer
+        X = X.unsqueeze(dim=-1)  # [K, n, d, 1] tensor
+        # apply a few non-linear layers
+        f_X = self.mlp_layers(X).squeeze(dim=-1)  # [K, n, d] tensor
+        G_f_X = torch.einsum('bji,bnj->bnij', G_D, f_X)  # [K, n, d, d] tensor
+        f_GX = torch.sum(G_f_X, dim=-1)  # [K, n, d] tensor
 
-        # Add a few non-linear layers
-        f_GX = self.mlp_layers(GX).squeeze(dim=-1)  # [K, n, d]
+        # Version 2: G in first layer
+        # # Get G_D * X
+        # GX = torch.einsum('bji,bnj->bnij', G_D, X)  # [K, n, d, d] tensor
+        # GX = torch.sum(GX, dim=-1, keepdim=True)  # [K, n, d, 1]
+        #
+        # # Add a few non-linear layers
+        # f_GX = self.mlp_layers(GX).squeeze(dim=-1)  # [K, n, d]
 
         # Squared Error
         loss_se = ((X - f_GX) ** 2).sum([2]).mean()
