@@ -99,7 +99,7 @@ class Trainer:
         # -----------------
         #  dual step
         # -----------------
-        if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
+        if epoch > 2000 and (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
             self.gamma *= 0.99
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
