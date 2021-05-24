@@ -32,6 +32,9 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
     else:
         g_dag = G_DAG(num_dags=group_size, p=cmd_args.p).to(DEVICE)
 
+    if cmd_args.ld > 1 and cmd_args.c > 1:
+        g_dag.T = db.Perm
+
     # ---------------------
     #  Optimizer
     # ---------------------
@@ -62,10 +65,26 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
 
 if __name__ == '__main__':
     # check K is the power of 2
-    if cmd_args.real_dir:
-        db = SergioDataset(cmd_args.real_dir)
+    results = {10: [], 20: [], 40: [], 80: [], 160: [], 320: [], 640: []}
+    group_size = [1] * 32 + [2] * 16 + [4] * 8 + [8] * 7 + [16] * 5
+    group_start = list(range(32)) + list(range(0, 32, 2)) + list(range(0, 32, 4)) + list(range(0, 28, 4)) + list(
+        range(0, 20, 4))
+    nums = [0, 32, 48, 56, 63, 68]
+    if cmd_args.group_size == 1:
+        i = 0
+    elif cmd_args.group_size == 2:
+        i = 1
+    elif cmd_args.group_size == 4:
+        i = 2
+    elif cmd_args.group_size == 8:
+        i = 3
+    elif cmd_args.group_size == 16:
+        i = 4
     else:
-        assert (cmd_args.K & (cmd_args.K - 1) == 0) and cmd_args.K != 0
+        raise NotImplementedError
+    for k in range(nums[i], nums[i+1]):
+        cmd_args.group_start = group_start[k]
+
         db = Dataset(p=cmd_args.p,
                      n=cmd_args.n_sample,
                      K=cmd_args.K,
@@ -73,11 +92,11 @@ if __name__ == '__main__':
                      s=cmd_args.s,
                      d=cmd_args.d,
                      w_range=(0.5, 2.0), verbose=True)
-    print(f'*** solving {db.hp}_group_size-{cmd_args.group_size} ***')
-    X = db.X[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size].detach().numpy()
-    G = db.G[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size]
-    real_se = np.square(X - X@G).sum(axis=-1).mean()
-    real_gn = np.linalg.norm(G, axis=0).sum()
-    print('real se: ', real_se)
-    print('real group norm: ', real_gn)
-    train(cmd_args, db, real_se, real_gn, group_size=cmd_args.group_size, group_start=cmd_args.group_start)
+        print(f'*** solving {db.hp}_group_size-{cmd_args.group_size}-{cmd_args.group_start}-{cmd_args.group_start+cmd_args.group_size} ***')
+        X = db.X[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size].detach().numpy()
+        G = db.G[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size]
+        real_se = np.square(X - X@G).sum(axis=-1).mean()
+        real_gn = np.linalg.norm(G, axis=0).sum()
+        print('real se: ', real_se)
+        print('real group norm: ', real_gn)
+        train(cmd_args, db, real_se, real_gn, group_size=cmd_args.group_size, group_start=cmd_args.group_start)

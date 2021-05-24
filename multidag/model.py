@@ -24,6 +24,14 @@ class G_DAG(nn.Module):
     def T(self):
         return self._T.to(DEVICE)
 
+    @T.setter
+    def T(self, perm):
+        B = np.tril(np.ones([self.p, self.p]), k=-1)
+        target = perm.T.dot(B).dot(perm) + np.random.rand(self.p, self.p) * 0.1
+        with torch.no_grad():
+            self._T.data = torch.DoubleTensor(target).unsqueeze(0)
+        print('### initialize T ###')
+
     def proximal_update(self, gamma):
         with torch.no_grad():
             G_norm = torch.linalg.norm(self.G, ord=2, dim=0, keepdim=True).detach() + 1e-20

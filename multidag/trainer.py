@@ -99,14 +99,14 @@ class Trainer:
         # -----------------
         #  dual step
         # -----------------
-        if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
+        if epoch > 2000 and (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
             self.gamma *= 0.99
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
-            if log['SE'] / self.se > log['l1/l2'] / self.gn + 0.05:
-                self.rho *= 0.9
-            elif log['SE'] / self.se < log['l1/l2'] / self.gn - 0.05:
-                self.rho *= 1.1
+            if log['SE'] / self.se > 1.05:
+                self.rho *= 0.95
+            elif log['SE'] / self.se < 0.95:
+                self.rho *= 1.05
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
 
@@ -133,13 +133,12 @@ class Trainer:
         # if h_D.sum().item() == 0:
         #     for i in range(len(h_D)):
         #         assert is_dag(G_D[i].detach().numpy())
-        lambda_h_wD = (ld * h_D).mean()   # lagrangian term
-        c_hw_2 = 0.5 * (c * h_D * h_D).mean()  # l2 penalty
+        lambda_h_wD = (ld * h_D).mean() * self.db.p  # lagrangian term
+        c_hw_2 = 0.5 * (c * h_D * h_D).mean() * self.db.p # l2 penalty
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
-        rho_w_l1 = self.rho * np.sqrt(self.db.p * np.log(self.db.p) / self.db.n /
-                   X.shape[0] ** 2) * w_l1_l2
+        rho_w_l1 = self.rho * w_l1_l2 / X.shape[0] / (self.db.n / 10)
 
         loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 
