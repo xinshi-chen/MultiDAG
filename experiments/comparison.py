@@ -32,7 +32,7 @@ else:
                  s=cmd_args.s,
                  d=cmd_args.d,
                  w_range=(0.5, 2.0), verbose=True)
-group_size = 1
+group_size = cmd_args.group_start
 while group_size <= cmd_args.K:
     g_dag = G_DAG(num_dags=group_size, p=cmd_args.p)
     multidag_result = []

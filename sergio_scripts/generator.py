@@ -130,5 +130,5 @@ if __name__ == '__main__':
 
     if not os.path.isdir(args.save_dir):
         os.mkdir(args.save_dir)
-    savepath = os.path.join(args.save_dir, f"sergio_K-{args.K}_p-{p}_e-{args.e}_n-{args.n}_nh-{args.nh}.npz")
+    savepath = os.path.join(args.save_dir, f"sergio_K-{args.K}_p-{p}_e-{args.e}_n-{args.n*args.K}_nh-{args.nh}.npz")
     np.savez(savepath, expression=expr_mat, task_labels=task_labels, task_adjacencies=G_adj, true_adjacency=T_adj)
