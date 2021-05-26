@@ -33,7 +33,7 @@ cmd_opt.add_argument('--hw_type', type=str, default='notears', choices=['notears
 cmd_opt.add_argument('-rho', type=float, default=1)
 cmd_opt.add_argument('-ld', type=float, default=1)
 cmd_opt.add_argument('-c', type=float, default=1)
-cmd_opt.add_argument('-eta', type=float, default=0.412)
+cmd_opt.add_argument('-eta', type=float, default=0.125)
 cmd_opt.add_argument('-mu', type=float, default=1)
 cmd_opt.add_argument('-gamma', type=float, default=1e-5)
 cmd_opt.add_argument('-alpha', type=float, default=0)

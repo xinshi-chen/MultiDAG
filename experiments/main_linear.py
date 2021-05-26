@@ -62,22 +62,37 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
 
 
 if __name__ == '__main__':
-    # check K is the power of 2
-    results = {10: [], 20: [], 40: [], 80: [], 160: [], 320: [], 640: []}
-    group_size = [1] * 32 + [2] * 16 + [4] * 8 + [8] * 7 + [16] * 5
-    group_start = list(range(32)) + list(range(0, 32, 2)) + list(range(0, 32, 4)) + list(range(0, 28, 4)) + list(
-        range(0, 20, 4))
-    nums = [0, 32, 48, 56, 63, 68]
-    if cmd_args.group_size == 1:
+    # results = {10: [], 20: [], 40: [], 80: [], 160: [], 320: [], 640: []}
+    if cmd_args.K == 32:
+        group_size = [1] * 32 + [2] * 16 + [4] * 8 + [8] * 7 + [16] * 5
+        group_start = list(range(32)) + list(range(0, 32, 2)) + list(range(0, 32, 4)) + list(range(0, 28, 4)) + list(
+            range(0, 20, 4))
+        nums = [0, 32, 48, 56, 63, 68]
+    elif cmd_args.K == 64:
+        group_size = [1] * 64 + [2] * 32 + [4] * 16 + [8] * 8 + [16] * 7 + [32] * 5 + [64]
+        group_start = list(range(64)) + list(range(0, 64, 2)) + list(range(0, 64, 4)) + list(range(0, 64, 8)) + list(
+            range(0, 56, 8)) + list(range(0, 40, 8)) + [0]
+        nums = [0, 32, 64, 96, 112, 120, 127, 132, 133]
+    else:
+        raise NotImplementedError
+
+    if cmd_args.group_size == 0:
         i = 0
-    elif cmd_args.group_size == 2:
+        cmd_args.group_size = 1
+    elif cmd_args.group_size == 1:
         i = 1
-    elif cmd_args.group_size == 4:
+    elif cmd_args.group_size == 2:
         i = 2
-    elif cmd_args.group_size == 8:
+    elif cmd_args.group_size == 4:
         i = 3
-    elif cmd_args.group_size == 16:
+    elif cmd_args.group_size == 8:
         i = 4
+    elif cmd_args.group_size == 16:
+        i = 5
+    elif cmd_args.group_size == 32:
+        i = 6
+    elif cmd_args.group_size == 64:
+        i = 7
     else:
         raise NotImplementedError
     for k in range(nums[i], nums[i+1]):
