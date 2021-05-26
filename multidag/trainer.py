@@ -121,26 +121,25 @@ class Trainer:
 
     def _train_epoch(self, epoch, X, progress_bar, dsc, loss_type, num_primal_steps=100):
 
-        for _ in range(num_primal_steps):
-            self.g_dag.train()
-            self.mlp_layers.train()
-            # -----------------
-            #  primal step
-            # -----------------
-            self.optimizer.zero_grad()
-            self.opt_mlp.zero_grad()
+        self.g_dag.train()
+        self.mlp_layers.train()
+        # -----------------
+        #  primal step
+        # -----------------
+        self.optimizer.zero_grad()
+        self.opt_mlp.zero_grad()
 
-            loss, h_D, log = self.get_loss(X, self.ld, self.c)
-            loss.backward()
+        loss, h_D, log = self.get_loss(X, self.ld, self.c)
+        loss.backward()
 
-            self.optimizer.step()
-            self.opt_mlp.step()
+        self.optimizer.step()
+        self.opt_mlp.step()
 
-            self.g_dag.proximal_update(self.gamma)
+        self.g_dag.proximal_update(self.gamma)
         # -----------------
         #  dual step
         # -----------------
-        if (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
+        if epoch > 2000 and (epoch + 1) % self.hyperparameter['dual_interval'] == 0:
             self.gamma *= 0.99
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
