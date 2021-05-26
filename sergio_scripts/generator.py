@@ -6,6 +6,10 @@ import numpy as np
 from sergio import sergio
 
 
+def _make_consistent(G):
+    return nx.convert_matrix.from_numpy_matrix(nx.convert_matrix.to_numpy_matrix(G), create_using=nx.DiGraph)
+
+
 def _read_dot(dotpath, w_range: tuple = (0.5, 2.0)):
     """
     Build directed graph greedily from .dot file
@@ -31,8 +35,7 @@ def _read_dot(dotpath, w_range: tuple = (0.5, 2.0)):
             gene_ids[gene] = id_ticker
             T.add_node(id_ticker)
             id_ticker += 1
-    assert nx.is_directed_acyclic_graph(T)
-    return T
+    return _make_consistent(T)
 
 
 def _perturb(T, n_perturbs, w_range: tuple = (0.5, 2.0)):
@@ -62,7 +65,7 @@ def _perturb(T, n_perturbs, w_range: tuple = (0.5, 2.0)):
     return g
 
 
-def _simulate_sergio(G, n_samples, hill=2, mr_range: tuple = (0.5, 2.0)):
+def _simulate_sergio(G, n_samples, n_cells=10, hill=2, mr_range: tuple = (0.5, 2.0)):
     def write_rows(path, rows):
         file = open(path, 'w')
         for row in rows:
@@ -81,7 +84,8 @@ def _simulate_sergio(G, n_samples, hill=2, mr_range: tuple = (0.5, 2.0)):
     indegree = np.array(list(dict(G.in_degree(nodes)).values()))
     MRs = nodes[indegree == 0]
     targets = nodes[indegree != 0]
-    mr_rows = [[mr, np.random.uniform(mr_range[0], mr_range[1])] for mr in MRs]
+    mr_rows = [[mr] + list(np.random.uniform(mr_range[0], mr_range[1], n_samples)) for mr in MRs]
+    # mr_rows = [[mr] + list(np.random.uniform(mr_range[0], mr_range[1], 1)) for mr in MRs]
     grn_rows = []
     for target in targets:
         parents = list(G.predecessors(target))
@@ -95,7 +99,7 @@ def _simulate_sergio(G, n_samples, hill=2, mr_range: tuple = (0.5, 2.0)):
     write_rows(mr_path, mr_rows)
     write_rows(grn_path, grn_rows)
 
-    sim = sergio(number_genes=len(nodes), number_bins=1, number_sc=n_samples, noise_params=1, decays=0.8, sampling_state=15, noise_type='dpd')
+    sim = sergio(number_genes=len(nodes), number_bins=n_samples, number_sc=1, noise_params=0.2, decays=0.8, sampling_state=15, noise_type='sp')
     sim.build_graph(input_file_taregts=grn_path, input_file_regs=mr_path)
     sim.simulate()
     expr = sim.getExpressions()
@@ -106,21 +110,23 @@ def _simulate_sergio(G, n_samples, hill=2, mr_range: tuple = (0.5, 2.0)):
 if __name__ == '__main__':
     cmd_opt = argparse.ArgumentParser(description='')
     cmd_opt.add_argument('-dot_path', type=str, default='./regulatory_networks/Ecoli_100_net1.dot', help='path to GRN .dot file')
-    cmd_opt.add_argument('-save_dir', type=str, default='./simulations/', help='directory to save simulation')
+    cmd_opt.add_argument('-save_dir', type=str, default='../data/', help='directory to save simulation')
     cmd_opt.add_argument('-K', type=int, default=10, help='number of tasks')
     cmd_opt.add_argument('-e', type=int, default=10, help='number of edge perturbations to make per task')
     cmd_opt.add_argument('-n', type=int, default=300, help='number of samples per task')
-    cmd_opt.add_argument('-nh', type=int, default=2, help='hill coefficient for SERGIO')
+    cmd_opt.add_argument('-nh', type=float, default=2, help='hill coefficient for SERGIO')
     args = cmd_opt.parse_args()
 
-    T = _read_dot(args.dot_path)
+    w_range = (0.5, 10.0)
+    T = _read_dot(args.dot_path, w_range=w_range)
     p = len(T.nodes)
-    G = [_perturb(T, args.e) for _ in range(args.K)]
-    exprs = [_simulate_sergio(g, args.n, hill=args.nh) for g in G]
+    G = [T] + [_perturb(T, args.e, w_range=w_range) for _ in range(args.K - 1)]
+    exprs = [_simulate_sergio(g, args.n, hill=args.nh, mr_range=w_range) for g in G]
     expr_mat = np.concatenate([expr for expr in exprs], axis=-1).T
     task_labels = [i // args.n for i in range(len(G) * args.n)]
-    T_adj = nx.convert_matrix.to_numpy_matrix(T)
-    G_adj = [nx.convert_matrix.to_numpy_matrix(g) for g in G]
+    # problem could be conversion to adjacency
+    T_adj = nx.convert_matrix.to_numpy_matrix(T).T
+    G_adj = [nx.convert_matrix.to_numpy_matrix(g).T for g in G]
 
     if not os.path.isdir(args.save_dir):
         os.mkdir(args.save_dir)

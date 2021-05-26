@@ -144,10 +144,10 @@ class Trainer:
             self.gamma *= 0.99
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
-            # if log['SE'] / self.se > log['l1/l2'] / self.gn + 0.05:
-            #     self.rho *= 0.9
-            # elif log['SE'] / self.se < log['l1/l2'] / self.gn - 0.05:
-            #     self.rho *= 1.1
+            if log['SE'] / self.se > log['l1/l2'] / self.gn + 0.05:
+                self.rho *= 0.9
+            elif log['SE'] / self.se < log['l1/l2'] / self.gn - 0.05:
+                self.rho *= 1.1
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
 
@@ -166,14 +166,14 @@ class Trainer:
         f_X = self.mlp_layers(X).squeeze(dim=-1)  # [K, n, d] tensor
         G_f_X = torch.einsum('bji,bnj->bnij', G_D, f_X)  # [K, n, d, d] tensor
         f_GX = torch.sum(G_f_X, dim=-1)  # [K, n, d] tensor
+        X = X.squeeze()
 
-        # Version 2: G in first layer
+        # # Version 2: G in first layer
         # # Get G_D * X
         # GX = torch.einsum('bji,bnj->bnij', G_D, X)  # [K, n, d, d] tensor
         # GX = torch.sum(GX, dim=-1, keepdim=True)  # [K, n, d, 1]
-        #
         # # Add a few non-linear layers
-        # f_GX = self.mlp_layers(GX).squeeze(dim=-1)  # [K, n, d]
+        # f_GX = self.mlp_layers(GX.float()).squeeze(dim=-1)  # [K, n, d]
 
         # Squared Error
         loss_se = ((X - f_GX) ** 2).sum([2]).mean()
