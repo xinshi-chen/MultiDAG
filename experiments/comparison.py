@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pickle
 from multidag.common.cmd_args import cmd_args
@@ -5,6 +6,9 @@ from multidag.data_generator import Dataset
 from multidag.dag_utils import count_accuracy
 from multidag.model import G_DAG
 from multidag.sergio_dataset import SergioDataset
+import matplotlib.pyplot as plt
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 title = ['fdr', 'tpr', 'fpr', 'shd', 'nnz']
 # notears_result = []
@@ -54,6 +58,16 @@ while group_size <= cmd_args.K:
         for k in range(G_true.shape[0]):
             r = count_accuracy(G_true[k], G_est[k])
             multidag_result.append([r[key] for key in r])
+        fig, axs = plt.subplots(1, 4)
+        axs[0].imshow(G_true[0])
+        axs[0].set_title('True')
+        axs[1].imshow(G_est[0])
+        axs[1].set_title('Recovered (G*T)')
+        axs[2].imshow(np.abs(model['T'])[0])
+        axs[2].set_title('T')
+        axs[3].imshow(np.abs(model['G'])[0])
+        axs[3].set_title('G')
+        plt.show()
     mean_multidag_result = np.array(multidag_result).mean(axis=0)
     print(f'###### multidag average results for group_size {group_size} #####')
     for i, t in enumerate(title):

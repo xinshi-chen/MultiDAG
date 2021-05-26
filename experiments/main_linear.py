@@ -74,6 +74,7 @@ if __name__ == '__main__':
                      d=cmd_args.d,
                      w_range=(0.5, 2.0), verbose=True)
     print(f'*** solving {db.hp}_group_size-{cmd_args.group_size} ***')
+    os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
     X = db.X[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size].detach().numpy()
     G = db.G[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size]
     real_se = np.square(X - X@G).sum(axis=-1).mean()
