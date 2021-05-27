@@ -83,4 +83,4 @@ for idx in range(len(p)):
     # x = [2**(i/2) for i in range(len(y))]
     ax[1, idx].plot(x, y)
 # plt.show()
-plt.savefig(f'fig/recovery.pdf', bbox_inches='tight')
+plt.savefig(f'figs/recovery.pdf', bbox_inches='tight')
