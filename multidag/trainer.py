@@ -75,7 +75,7 @@ class Trainer:
         """
         progress_bar = tqdm(range(start_epoch, start_epoch + epochs))
         dsc = ''
-        batch_size = min([self.n, 1000 // len(self.K_mask)])
+        batch_size = self.n
         X = self.db.load_data(batch_size=batch_size, device=DEVICE)[self.K_mask]
         for e in progress_bar:
             self._train_epoch(e, X, progress_bar, dsc, loss_type)
