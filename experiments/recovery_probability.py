@@ -1,17 +1,18 @@
 import numpy as np
-import pickle
+import pickle, os, glob
 import matplotlib.pyplot as plt
 from multidag.data_generator import Dataset
 from multidag.common.cmd_args import cmd_args
 from multidag.dag_utils import is_dag, project_to_dag
 from multidag.model import G_DAG
 
-def success(B_est, perm):
+def success(B_est, perm, verbose=False):
     '''
     check whether the topo order is successfully recovered
     '''
     if not is_dag(B_est):
-        print('B_est is not DAG, use projection')
+        if verbose:
+            print('B_est is not DAG, use projection')
         B_est, _ = project_to_dag(B_est)
     inv = np.linalg.inv(perm)
     target = inv.T.dot(B_est).dot(inv)
@@ -19,46 +20,67 @@ def success(B_est, perm):
 
 def accuracy(result):
     accs = []
-    k = result.shape[0]
-    for i in range(1-k, k):
-        accs.append(np.tril(np.triu(np.flip(result, axis=0), i), i).sum() / (k - np.abs(i)))
+    m, n = result.shape
+    target = np.flip(result, axis=1)
+    for k in range(n-1, -m, -1):
+        accs.append(np.mean(target.diagonal(offset=k)))
     return accs
 
-if __name__ == '__main__':
-    results = {20:[], 40: [], 80: [], 160: [], 320: [], 640: []}
-    for n in results:
-        db = Dataset(p=cmd_args.p,
+p = [32, 64, 128]#, 256] #, 512, 1024]
+n_samples = [10, 20, 40, 80, 160, 320, 640]
+s0 = [40, 96, 224, 512, 1152, 2560]
+s = [120, 288, 672, 1536, 3456, 7680]
+d = [5, 6, 7, 8, 9, 10]
+sizes = [1, 2, 4, 8, 16, 32, 64]
+
+fig, ax = plt.subplots(nrows=2, ncols=len(p), figsize=(15,15))
+color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+label = [f'k={k}' for k in sizes]
+for idx in range(len(p)):
+    # group_size * sample_size * task * configs
+    result = {key: {n: [[] for _ in range(cmd_args.K)] for n in n_samples} for i, key in enumerate(sizes)}
+    for n in n_samples:
+        db = Dataset(p=p[idx],
                      n=n,
                      K=cmd_args.K,
-                     s0=cmd_args.s0,
-                     s=cmd_args.s,
-                     d=cmd_args.d,
-                     w_range=(0.5, 2.0), verbose=True)
+                     s0=s0[idx],
+                     s=s[idx],
+                     d=d[idx],
+                     w_range=(0.5, 2.0), verbose=False)
         perm = db.Perm
-        group_size = 1
-        while group_size <= cmd_args.K:
-            g_dag = G_DAG(num_dags=group_size, p=cmd_args.p)
-            recovery = []
-            for i in range(db.K // group_size):
-                with open(
-                        f'./saved_models/p-{cmd_args.p}_n-{n}_K-{cmd_args.K}_s-{cmd_args.s}_s0-{cmd_args.s0}_'
-                        f'd-{cmd_args.d}_w_range_l-0.5_w_range_u-2.0/rho-{cmd_args.rho}_lambda-{cmd_args.ld}_'
-                        f'c-{cmd_args.c}_gamma-{cmd_args.gamma}_'
-                        f'eta-{cmd_args.eta}_mu-{cmd_args.mu}_dual_interval-{cmd_args.dual_interval}/multidag_'
-                        f'group_size-{group_size}-{i * group_size}-{(i + 1) * group_size}.pkl', 'rb') as handle:
+        root = f'./saved_models/p-{p[idx]}_n-{n}_K-{cmd_args.K}_s-{s[idx]}_s0-{s0[idx]}_d-{d[idx]}_' \
+               f'w_range_l-0.5_w_range_u-2.0'
+        dir_list = os.listdir(root)
+        # each dir represents a hyperparameter configuration
+        for dir in dir_list:
+            file_list = glob.glob(os.path.join(root, dir) + '/*.pkl')
+            # each file represent a solution for corresponding tasks
+            for file in file_list:
+                with open(file, 'rb') as handle:
                     model = pickle.load(handle)[0]
-                B_est = np.abs(model['G'] * model['T'])
-                B_est[B_est < cmd_args.threshold] = 0
-                B_est = np.sign(B_est)
-                for k in range(group_size):
-                    assert is_dag(B_est[k])
-                    recovery.append(success(B_est[k], perm))
-            results[n].append(np.mean(recovery))
-            group_size *= 2
-
-    result = np.array([results[key] for key in results])
+                basename = os.path.splitext(os.path.basename(file))[0]
+                s_e = basename.split('-')[-2:]
+                size = int(s_e[1]) - int(s_e[0])
+                G_est = np.abs(model['G'] * model['T'])
+                G_est[G_est < cmd_args.threshold + 0.02 * np.log2(n / 10)] = 0
+                # G_est[G_est < cmd_args.threshold] = 0
+                G_est = np.sign(G_est)
+                for m in range(G_est.shape[0]):
+                    r = success(G_est[m], perm)
+                    result[size][n][int(s_e[0]) + m].append(r)
+    for size in sizes:
+        for n in n_samples:
+            temp = list(result[size][n])
+            for k in range(cmd_args.K):
+                temp[k] = np.max(temp[k])
+            result[size][n] = np.mean(temp)
+    result = np.array([[result[size][n] for size in sizes] for n in n_samples])
     print(result)
+
+    ax[0, idx].imshow(result, cmap='hot', interpolation='nearest')
     y = accuracy(result)
-    x = [2**(i/2) for i in range(len(y))]
-    plt.plot(x, y)
-    plt.show()
+    x = [np.sqrt(10 * 2**i * p[idx]/ (s0[idx]**2 * np.log(p[idx]))) for i in range(len(y))]
+    # x = [2**(i/2) for i in range(len(y))]
+    ax[1, idx].plot(x, y)
+# plt.show()
+plt.savefig(f'fig/recovery.pdf', bbox_inches='tight')
