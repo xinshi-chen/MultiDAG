@@ -64,21 +64,20 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
 if __name__ == '__main__':
     # results = {10: [], 20: [], 40: [], 80: [], 160: [], 320: [], 640: []}
     if cmd_args.K == 32:
-        group_size = [1] * 32 + [2] * 16 + [4] * 8 + [8] * 7 + [16] * 5
+        group_size = [1] * 32 + [2] * 16 + [4] * 8 + [8] * 4 + [16] * 5
         group_start = list(range(32)) + list(range(0, 32, 2)) + list(range(0, 32, 4)) + list(range(0, 28, 4)) + list(
             range(0, 20, 4))
         nums = [0, 32, 48, 56, 63, 68]
     elif cmd_args.K == 64:
-        group_size = [1] * 64 + [2] * 32 + [4] * 16 + [8] * 8 + [16] * 7 + [32] * 5 + [64]
+        group_size = [1] * 64 + [2] * 32 + [4] * 16 + [8] * 8 + [16] * 4 + [32] * 2
         group_start = list(range(64)) + list(range(0, 64, 2)) + list(range(0, 64, 4)) + list(range(0, 64, 8)) + list(
-            range(0, 56, 8)) + list(range(0, 40, 8)) + [0]
-        nums = [0, 12, 25, 38, 51, 64, 74, 85, 96, 104, 112, 120, 127, 132, 133]
+            range(0, 64, 16)) + list(range(0, 64, 32))
+        nums = list(range(0, 64, 16)) + list(range(64, 96, 8)) + list(range(96, 112, 4)) + list(range(112, 120, 2)) + list(range(120, 124)) + list(range(124, 126))
     else:
         raise NotImplementedError
 
     for k in range(nums[cmd_args.group_idx], nums[cmd_args.group_idx+1]):
         cmd_args.group_start = group_start[k]
-
         db = Dataset(p=cmd_args.p,
                      n=cmd_args.n_sample,
                      K=cmd_args.K,
