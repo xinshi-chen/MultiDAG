@@ -72,7 +72,8 @@ if __name__ == '__main__':
         group_size = [1] * 64 + [2] * 32 + [4] * 16 + [8] * 8 + [16] * 4 + [32] * 2
         group_start = list(range(64)) + list(range(0, 64, 2)) + list(range(0, 64, 4)) + list(range(0, 64, 8)) + list(
             range(0, 64, 16)) + list(range(0, 64, 32))
-        nums = list(range(0, 64, 16)) + list(range(64, 96, 8)) + list(range(96, 112, 4)) + list(range(112, 120, 2)) + list(range(120, 124)) + list(range(124, 126))
+        nums = list(range(0, 64, 16)) + list(range(64, 96, 8)) + list(range(96, 112, 4)) + list(range(112, 120, 2)) + list(range(120, 124)) + list(range(124, 126)) + [126]
+        print(len(nums))
     else:
         raise NotImplementedError
 
