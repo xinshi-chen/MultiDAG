@@ -126,27 +126,27 @@ class Trainer:
         mu_one = self.hyperparameter['mu'] * one
 
         conn = h_W[self.constraint_type](self.g_dag.T)
-        lambda_conn = ld.mean() * conn * self.db.p
-        c_conn_2 = 0.5 * c.mean() * conn ** 2 * self.db.p
+        lambda_conn = ld.mean() * conn
+        c_conn_2 = 0.5 * c.mean() * conn ** 2
 
-        h_D = h_W[self.constraint_type](G_D)
-        # if h_D.sum().item() == 0:
-        #     for i in range(len(h_D)):
-        #         assert is_dag(G_D[i].detach().numpy())
-
-        lambda_h_wD = (ld * h_D).mean() * self.db.p  # lagrangian term
-        c_hw_2 = 0.5 * (c * h_D * h_D).mean() * self.db.p # l2 penalty
+        if self.hyperparameter['alpha'] == 0:
+            h_D = 0
+            lambda_h_wD = 0
+            c_hw_2 = 0
+        else:
+            h_D = h_W[self.constraint_type](G_D)
+            lambda_h_wD = (ld * h_D).mean()  # lagrangian term
+            c_hw_2 = 0.5 * (c * h_D * h_D).mean() # l2 penalty
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
         rho_w_l1 = self.rho * w_l1_l2 / X.shape[0] / (self.db.n / 10)
 
-        loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + \
-               self.hyperparameter['alpha'] * (lambda_h_wD + c_hw_2)
+        loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + (lambda_h_wD + c_hw_2)
 
         log = {'SE': loss_se.item(),
                'l1/l2': w_l1_l2.item(),
-               'h_D': h_D.mean().item(),
+               'h_D': h_D.mean().item() if self.hyperparameter['alpha'] > 0 else 0,
                'conn': conn.item(),
                'one': one.item()
                }
