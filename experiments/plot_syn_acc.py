@@ -4,11 +4,13 @@ import matplotlib.pyplot as plt
 from multidag.common.cmd_args import cmd_args
 from multidag.data_generator import Dataset
 from multidag.dag_utils import count_accuracy
+from multidag.model import LSEM
 from multidag.model import G_DAG
+from torch import FloatTensor
 
 
 title = ['fdr', 'tpr', 'fpr', 'shd', 'nnz']
-p = [32, 64, 128]#, 256] #, 512, 1024]
+p = [32, 64, 128, 256] #, 512, 1024]
 n_samples = [10, 20, 40, 80, 160, 320, 640]
 s0 = [40, 96, 224, 512, 1152, 2560]
 s = [120, 288, 672, 1536, 3456, 7680]
@@ -34,6 +36,7 @@ for idx in range(len(p)):
                      s=s[idx],
                      d=d[idx],
                      w_range=(0.5, 2.0), verbose=False)
+        temp_x = db.X.detach().numpy()
         root = f'./saved_models/p-{p[idx]}_n-{n}_K-{cmd_args.K}_s-{s[idx]}_s0-{s0[idx]}_d-{d[idx]}_' \
                f'w_range_l-0.5_w_range_u-2.0'
         dir_list = os.listdir(root)
@@ -50,6 +53,13 @@ for idx in range(len(p)):
                 K_mask = np.arange(int(s_e[0]), int(s_e[1]))
                 G_true = np.abs(np.sign(db.G[K_mask]))
                 G_est = np.abs(model['G'] * model['T'])
+                if size != 1:
+                    X = db.X.detach().numpy()[K_mask]
+                    temp_est = model['G'] * model['T']
+                    print(f'### p: {p[idx]}, n: {n}, size: {size} ###')
+                    print(f'G_true, se: {((X - X @ db.G[K_mask])**2).sum(axis=-1).mean()}, l1: {np.abs(db.G[K_mask]).sum()}, group: {np.linalg.norm(db.G[K_mask], ord=2, axis=0).sum()}')
+                    print(f'G_est, se: {((X - X @ temp_est)**2).sum(axis=-1).mean()}, l1: {G_est.sum()}, group: {np.linalg.norm(temp_est, ord=2, axis=0).sum()}')
+
                 # G_est[G_est < cmd_args.threshold + 0.02 * np.log2(n / 10)] = 0
                 # G_est[G_est < cmd_args.threshold - 0.02 * np.log2(G_true.shape[0])] = 0
                 G_est[G_est < cmd_args.threshold] = 0
