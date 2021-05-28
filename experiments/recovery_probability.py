@@ -94,5 +94,5 @@ for idx in range(len(p)):
 # ax[-1].set_xlim([0,2])
 # ax[-1].legend()
 ax[0].set_ylabel('Number of Samples', fontsize=25)
-plt.show()
-# plt.savefig(f'figs/recovery.pdf', bbox_inches='tight')
+# plt.show()
+plt.savefig(f'figs/heatmap.pdf', bbox_inches='tight')
