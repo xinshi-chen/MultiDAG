@@ -1,12 +1,13 @@
 import numpy as np
 import pickle, os, glob
 import matplotlib.pyplot as plt
+import seaborn as sns
 from multidag.data_generator import Dataset
 from multidag.common.cmd_args import cmd_args
 from multidag.dag_utils import is_dag, project_to_dag
 from multidag.model import G_DAG
 
-def success(B_est, perm, verbose=False):
+def success(B_est, perm, threshold=1, verbose=False):
     '''
     check whether the topo order is successfully recovered
     '''
@@ -16,7 +17,12 @@ def success(B_est, perm, verbose=False):
         B_est, _ = project_to_dag(B_est)
     inv = np.linalg.inv(perm)
     target = inv.T.dot(B_est).dot(inv)
-    return np.abs(np.triu(target, 1)).sum() < 1e-6
+    if np.abs(np.triu(target, 1)).sum() > 1e-6:
+        return 0
+    elif np.abs(np.tril(target, 1)).sum() < threshold:
+        return 0
+    else:
+        return 1
 
 def accuracy(result):
     accs = []
@@ -26,16 +32,17 @@ def accuracy(result):
         accs.append(np.mean(target.diagonal(offset=k)))
     return accs
 
-p = [32, 64, 128]#, 256] #, 512, 1024]
-n_samples = [10, 20, 40, 80, 160, 320, 640]
+p = [32, 64, 128, 256] #, 512, 1024]
+n_samples = [10, 20, 40, 80, 160, 320]
 s0 = [40, 96, 224, 512, 1152, 2560]
 s = [120, 288, 672, 1536, 3456, 7680]
 d = [5, 6, 7, 8, 9, 10]
-sizes = [1, 2, 4, 8, 16, 32, 64]
+sizes = [1, 2, 4, 8, 16, 32]
 
-fig, ax = plt.subplots(nrows=2, ncols=len(p), figsize=(15,15))
+fig, ax = plt.subplots(nrows=1, ncols=len(p), figsize=(20,10))
+sns.set(font_scale=1.5)
 color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
-label = [f'k={k}' for k in sizes]
+label = [f'p={pp}' for pp in p]
 for idx in range(len(p)):
     # group_size * sample_size * task * configs
     result = {key: {n: [[] for _ in range(cmd_args.K)] for n in n_samples} for i, key in enumerate(sizes)}
@@ -66,21 +73,26 @@ for idx in range(len(p)):
                 # G_est[G_est < cmd_args.threshold] = 0
                 G_est = np.sign(G_est)
                 for m in range(G_est.shape[0]):
-                    r = success(G_est[m], perm)
+                    r = success(G_est[m], perm, threshold=p[idx]/3)
                     result[size][n][int(s_e[0]) + m].append(r)
     for size in sizes:
         for n in n_samples:
             temp = list(result[size][n])
-            for k in range(cmd_args.K):
-                temp[k] = np.max(temp[k])
             result[size][n] = np.mean(temp)
     result = np.array([[result[size][n] for size in sizes] for n in n_samples])
     print(result)
-
-    ax[0, idx].imshow(result, cmap='hot', interpolation='nearest')
-    y = accuracy(result)
-    x = [np.sqrt(10 * 2**i * p[idx]/ (s0[idx]**2 * np.log(p[idx]))) for i in range(len(y))]
-    # x = [2**(i/2) for i in range(len(y))]
-    ax[1, idx].plot(x, y)
-# plt.show()
-plt.savefig(f'figs/recovery.pdf', bbox_inches='tight')
+    temp = sns.heatmap(result, annot=True, linewidths=.5, cbar=False, ax=ax[idx],
+                xticklabels=sizes, yticklabels=n_samples)
+    ax[idx].set_title(f'p = {p[idx]}', fontsize=25)
+    temp.set_yticklabels(n_samples, size=20)
+    temp.set_xticklabels(sizes, size=20)
+    ax[idx].set_xlabel('Number of Tasks', fontsize=25)
+    # ax[idx].imshow(result, cmap='hot', interpolation='nearest')
+#     y = accuracy(result)
+#     x = [np.sqrt(10 * 2**i * p[idx]/ (s0[idx]**2 * np.log(p[idx]))) for i in range(len(y))]
+#     ax[-1].plot(x, y, color=color[idx], label=label[idx])
+# ax[-1].set_xlim([0,2])
+# ax[-1].legend()
+ax[0].set_ylabel('Number of Samples', fontsize=25)
+plt.show()
+# plt.savefig(f'figs/recovery.pdf', bbox_inches='tight')
