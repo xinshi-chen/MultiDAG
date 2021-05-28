@@ -11,11 +11,11 @@ from torch import FloatTensor
 
 title = ['fdr', 'tpr', 'fpr', 'shd', 'nnz']
 p = [32, 64, 128, 256] #, 512, 1024]
-n_samples = [10, 20, 40, 80, 160, 320, 640]
+n_samples = [10, 20, 40, 80, 160, 320]
 s0 = [40, 96, 224, 512, 1152, 2560]
 s = [120, 288, 672, 1536, 3456, 7680]
 d = [5, 6, 7, 8, 9, 10]
-sizes = [1, 2, 4, 8, 16, 32, 64]
+sizes = [1, 2, 4, 8, 16, 32]
 
 fig, ax = plt.subplots(nrows=len(title), ncols=len(p), figsize=(25,25))
 color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
@@ -53,13 +53,6 @@ for idx in range(len(p)):
                 K_mask = np.arange(int(s_e[0]), int(s_e[1]))
                 G_true = np.abs(np.sign(db.G[K_mask]))
                 G_est = np.abs(model['G'] * model['T'])
-                if size != 1:
-                    X = db.X.detach().numpy()[K_mask]
-                    temp_est = model['G'] * model['T']
-                    print(f'### p: {p[idx]}, n: {n}, size: {size} ###')
-                    print(f'G_true, se: {((X - X @ db.G[K_mask])**2).sum(axis=-1).mean()}, l1: {np.abs(db.G[K_mask]).sum()}, group: {np.linalg.norm(db.G[K_mask], ord=2, axis=0).sum()}')
-                    print(f'G_est, se: {((X - X @ temp_est)**2).sum(axis=-1).mean()}, l1: {G_est.sum()}, group: {np.linalg.norm(temp_est, ord=2, axis=0).sum()}')
-
                 # G_est[G_est < cmd_args.threshold + 0.02 * np.log2(n / 10)] = 0
                 # G_est[G_est < cmd_args.threshold - 0.02 * np.log2(G_true.shape[0])] = 0
                 G_est[G_est < cmd_args.threshold] = 0
