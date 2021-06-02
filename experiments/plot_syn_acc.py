@@ -17,7 +17,7 @@ s = [120, 288, 672, 1536, 3456, 7680]
 d = [5, 6, 7, 8, 9, 10]
 sizes = [1, 2, 4, 8, 16, 32]
 
-fig, ax = plt.subplots(nrows=len(title), ncols=len(p), figsize=(25,25))
+fig, ax = plt.subplots(nrows=5, ncols=len(p), figsize=(25,25))
 color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 label = [f'k={k}' for k in sizes]
 for idx in range(len(p)):
@@ -93,11 +93,18 @@ for idx in range(len(p)):
         ax[2, idx].plot(n_samples, fpr[k], color=color[k], label=label[k])
         ax[3, idx].plot(n_samples, shd[k], color=color[k], label=label[k])
         ax[4, idx].plot(n_samples, nnz[k], color=color[k], label=label[k])
-    ax[0, idx].title.set_text(f'p = {p[idx]}')
-    for tt in range(5):
-        ax[tt, idx].legend()
-        ax[tt, idx].set_xscale('log', base=2)
-    ax[4, idx].set_xlabel('n (number of samples)')
+    ax[0, idx].set_title(f'p = {p[idx]}', fontsize=16)
+    for k in range(5):
+        ax[k, idx].legend(prop={'size': 18})
+        ax[k, idx].set_xscale('log', base=2)
+        ax[k, idx].grid(axis='y', linestyle='dashed')
+    ax[-1, idx].set_xlabel('n (number of samples)')
+    for item in [ax[-1,idx].xaxis.label] + [ax[k,idx].yaxis.label for k in range(5)] +\
+                ax[0,idx].get_xticklabels() + ax[0,idx].get_yticklabels() + ax[1,idx].get_xticklabels() +\
+                ax[1,idx].get_yticklabels() + ax[2,idx].get_xticklabels() + ax[2,idx].get_yticklabels() +\
+                ax[3,idx].get_xticklabels() + ax[3,idx].get_yticklabels() + ax[4,idx].get_xticklabels() +\
+                ax[4,idx].get_yticklabels():
+        item.set_fontsize(16)
 ax[0, 0].set_ylabel('False Discovery Rate (FDR)')
 ax[1, 0].set_ylabel('True Positive Rate (TPR)')
 ax[2, 0].set_ylabel('False Positive Rate (FPR)')

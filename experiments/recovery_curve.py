@@ -39,7 +39,7 @@ s = [120, 288, 672, 1536, 3456, 7680]
 d = [5, 6, 7, 8, 9, 10]
 sizes = [1, 2, 4, 8, 16, 32]
 
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12,9))
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8,6))
 color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 label = [f'p={pp}' for pp in p]
 marker = ['.', 'P', 'o', 'v']
@@ -87,8 +87,13 @@ for idx in range(len(p)):
     x = [np.sqrt(10 * 2**i * p[idx]/ (s0[idx]**2 * np.log(p[idx]))) for i in range(len(y))]
     ax.plot(x, y, color=color[idx], label=label[idx], linestyle=linestyle[idx], marker=marker[idx])
 # ax[-1].set_xlim([0,2])
-ax.legend()
-ax.set_ylabel('Recovery Probability', fontsize=14)
-ax.set_xlabel('1 / theta?', fontsize=14)
+ax.legend(loc='lower right', prop={'size': 24})
+ax.set_ylabel('Recovery Probability', fontsize=20)
+ax.set_xlabel(r'$\theta$', fontsize=20)
+ax.set_xscale('log', base=2)
+plt.grid(axis='y', linestyle='dashed')
+
+for item in ([ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
+    item.set_fontsize(20)
 # plt.show()
 plt.savefig(f'figs/curve.pdf', bbox_inches='tight')

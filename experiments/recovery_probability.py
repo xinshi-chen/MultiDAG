@@ -39,7 +39,7 @@ s = [120, 288, 672, 1536, 3456, 7680]
 d = [5, 6, 7, 8, 9, 10]
 sizes = [1, 2, 4, 8, 16, 32]
 
-fig, ax = plt.subplots(nrows=1, ncols=len(p), figsize=(20,10))
+fig, ax = plt.subplots(nrows=1, ncols=len(p), figsize=(24,5))
 sns.set(font_scale=1.5)
 color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 label = [f'p={pp}' for pp in p]
@@ -83,16 +83,16 @@ for idx in range(len(p)):
     print(result)
     temp = sns.heatmap(result, annot=True, linewidths=.5, cbar=False, ax=ax[idx],
                 xticklabels=sizes, yticklabels=n_samples)
-    ax[idx].set_title(f'p = {p[idx]}', fontsize=25)
+    ax[idx].set_title(f'p = {p[idx]}', fontsize=22)
     temp.set_yticklabels(n_samples, size=20)
     temp.set_xticklabels(sizes, size=20)
-    ax[idx].set_xlabel('Number of Tasks', fontsize=25)
+    ax[idx].set_xlabel('Number of Tasks', fontsize=22)
     # ax[idx].imshow(result, cmap='hot', interpolation='nearest')
 #     y = accuracy(result)
 #     x = [np.sqrt(10 * 2**i * p[idx]/ (s0[idx]**2 * np.log(p[idx]))) for i in range(len(y))]
 #     ax[-1].plot(x, y, color=color[idx], label=label[idx])
 # ax[-1].set_xlim([0,2])
 # ax[-1].legend()
-ax[0].set_ylabel('Number of Samples', fontsize=25)
+ax[0].set_ylabel('Number of Samples per Task', fontsize=22)
 # plt.show()
 plt.savefig(f'figs/heatmap.pdf', bbox_inches='tight')
