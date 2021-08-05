@@ -74,11 +74,18 @@ if __name__ == '__main__':
             range(0, 64, 16)) + list(range(0, 64, 32))
         nums = list(range(0, 64, 16)) + list(range(64, 96, 8)) + list(range(96, 112, 4)) + list(range(112, 120, 2)) + list(range(120, 124)) + list(range(124, 126)) + [126]
         print(len(nums))
+    elif cmd_args.K == 256:
+        group_size = [1] * 256 + [2] * 128 + [4] * 64 + [8] * 32 + [16] * 16 + [32] * 8
+        group_start = list(range(256)) + list(range(0, 256, 2)) + list(range(0, 256, 4)) + list(range(0, 256, 8)) + \
+            list(range(0, 256, 16)) + list(range(0, 256, 32))
+        nums = list(range(0, 256, 64)) + list(range(256, 384, 32)) + list(range(384, 448, 16)) + \
+               list(range(448, 480, 8)) + list(range(480, 496, 4)) + list(range(496, 504, 4)) + [504]
     else:
         raise NotImplementedError
 
     for k in range(nums[cmd_args.group_idx], nums[cmd_args.group_idx+1]):
         cmd_args.group_start = group_start[k]
+        cmd_args.group_size = group_size[k]
         db = Dataset(p=cmd_args.p,
                      n=cmd_args.n_sample,
                      K=cmd_args.K,
