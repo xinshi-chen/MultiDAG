@@ -136,7 +136,7 @@ for idx in range(len(p)):
     # print statistics
     print(f'### fdr for p = {p[idx]} ###')
     for k in range(len(sizes)):
-        log = ''
+        log = f'k={k} & '
         for l in range(len(n_samples)):
             log += f'${fdr[k][l]:.4f}\pm{fdr_std[k][l]:.4f}$ & '
         print(log[:-2] + '\\')
