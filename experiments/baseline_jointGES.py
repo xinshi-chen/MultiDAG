@@ -4,6 +4,7 @@ import pickle
 from multidag.dag_utils import is_dag
 from sklearn import linear_model
 from multidag.common.cmd_args import cmd_args
+from tqdm import tqdm
 
 
 class jointGES(object):
@@ -131,7 +132,7 @@ if __name__ == '__main__':
 
     t0 = time.time()
     A = np.zeros((K, p, p))
-    for i in range(int(K / group_size)):
+    for i in tqdm(range(int(K / group_size))):
         ges = jointGES(X[group_size*(i-1): group_size*i], d=d)
         A[group_size*(i-1): group_size*i] = ges.train(alpha=0.1)
     t1 = time.time()
