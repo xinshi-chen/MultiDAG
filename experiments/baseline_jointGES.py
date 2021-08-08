@@ -134,7 +134,7 @@ if __name__ == '__main__':
     A = np.zeros((K, p, p))
     for i in tqdm(range(int(K / group_size))):
         ges = jointGES(X[group_size*(i-1): group_size*i], d=d)
-        A[group_size*(i-1): group_size*i] = ges.train(alpha=0.1)
+        A[group_size*(i-1): group_size*i] = ges.train()
     t1 = time.time()
     save_dir = os.path.join('saved_models', hp)
     if not os.path.isdir(save_dir):
