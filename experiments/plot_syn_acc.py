@@ -136,31 +136,31 @@ for idx in range(len(p)):
     # print statistics
     print(f'### fdr for p = {p[idx]} ###')
     for k in range(len(sizes)):
-        log = f'k={k} & '
+        log = f'k={int(2**k)} & '
         for l in range(len(n_samples)):
             log += f'${fdr[k][l]:.4f}\pm{fdr_std[k][l]:.4f}$ & '
         print(log[:-2] + '\\')
     print(f'### tpr for p = {p[idx]} ###')
     for k in range(len(sizes)):
-        log = f'k={k} & '
+        log = f'k={int(2**k)} & '
         for l in range(len(n_samples)):
             log += f'${tpr[k][l]:.4f}\pm{tpr_std[k][l]:.4f}$ & '
         print(log[:-2] + '\\')
     print(f'### fpr for p = {p[idx]} ###')
     for k in range(len(sizes)):
-        log = f'k={k} & '
+        log = f'k={int(2**k)} & '
         for l in range(len(n_samples)):
             log += f'${fpr[k][l]:.4f}\pm{fpr_std[k][l]:.4f}$ & '
         print(log[:-2] + '\\')
     print(f'### shd for p = {p[idx]} ###')
     for k in range(len(sizes)):
-        log = f'k={k} & '
+        log = f'k={int(2**k)} & '
         for l in range(len(n_samples)):
             log += f'${shd[k][l]:.4f}\pm{shd_std[k][l]:.4f}$ & '
         print(log[:-2] + '\\')
     print(f'### nnz for p = {p[idx]} ###')
     for k in range(len(sizes)):
-        log = f'k={k} & '
+        log = f'k={int(2**k)} & '
         for l in range(len(n_samples)):
             log += f'${nnz[k][l]:.4f}\pm{nnz_std[k][l]:.4f}$ & '
         print(log[:-2] + '\\')
