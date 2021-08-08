@@ -58,7 +58,7 @@ class jointGES(object):
         return positive_count, negative_count
 
     def _lasso(self, alpha=None):
-        alpha = np.sqrt(np.log(self.p) / self.n / self.K) if alpha is None else alpha
+        alpha = np.sqrt(np.log(self.p) / self.n / 8) if alpha is None else alpha
         self.A = np.zeros((self.K, self.p, self.p))
         clf = linear_model.Lasso(alpha=alpha, max_iter=100000)
         for k in range(self.K):
