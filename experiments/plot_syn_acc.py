@@ -42,13 +42,13 @@ for idx in range(len(p)):
                      s=s[idx],
                      d=d[idx],
                      w_range=(0.5, 2.0), verbose=False)
-        temp_x = db.X.detach().numpy()
+        # temp_x = db.X.detach().numpy()
         root = f'./saved_models/p-{p[idx]}_n-{n}_K-{cmd_args.K}_s-{s[idx]}_s0-{s0[idx]}_d-{d[idx]}_' \
                f'w_range_l-0.5_w_range_u-2.0'
         dir_list = os.listdir(root)
         # each dir represents a hyperparameter configuration
         for dir in dir_list:
-            file_list = glob.glob(os.path.join(root, dir) + '/*.pkl')
+            file_list = glob.glob(os.path.join(root, dir) + '/multidag_*.pkl')
             # each file represent a solution for corresponding tasks
             for file in file_list:
                 with open(file, 'rb') as handle:
