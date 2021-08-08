@@ -21,16 +21,18 @@ class jointGES(object):
         self.G_temp = None
 
     def train(self, alpha=None, lamda=None):
-        self.lamda = 3 * np.log(self.p) / self.n if lamda is None else lamda
-        self._GES()
+        self.lamda = np.log(self.p) / self.n / self.K if lamda is None else lamda
+        positive_count, negative_count = self._GES()
         self._lasso(alpha)
-        return self.A
+        return self.A, positive_count, negative_count
 
     def _GES(self):
         '''
         When count == 0, flip the phase
         When count == 0 two times, stop greedy search
         '''
+        positive_count = 0
+        negative_count = 0
         self.G = np.zeros((self.p, self.p))
         phase = 1
         flag, count = 1, 1
@@ -43,14 +45,20 @@ class jointGES(object):
                 for j in range(self.p):
                     dE = self._deltaE(i, j, phase)
                     if dE < 0:
+                        count += 1
                         self._updateG(i, j, phase)
             if count:
                 flag = 1
+            if phase == 1:
+                positive_count += count
+            elif phase == -1:
+                negative_count += count
+        return positive_count, negative_count
 
     def _lasso(self, alpha=None):
-        alpha = 2 * np.sqrt(np.log(self.p) / self.n) if alpha is None else alpha
+        alpha = np.sqrt(np.log(self.p) / self.n / self.K) if alpha is None else alpha
         self.A = np.zeros((self.K, self.p, self.p))
-        clf = linear_model.Lasso(alpha=alpha, max_iter=10000)
+        clf = linear_model.Lasso(alpha=alpha, max_iter=100000)
         for k in range(self.K):
             for j in range(self.p):
                 if self.G[:, j].sum() == 0:
@@ -67,17 +75,22 @@ class jointGES(object):
             return 0
         dE = phase * self.lamda
         for k in range(self.K):
-            if self.G[:, j].sum() > 0:
+            if self.G[:, j].sum() > 0 and self.G_temp[:, j].sum() > 0:
                 X = self.X[k][:, self.G[:, j].astype(bool)]
                 X_temp = self.X[k][:, self.G_temp[:, j].astype(bool)]
                 Y = self.X[k, :, j:j+1]
                 dE += (np.log(np.sum(np.square(Y - X_temp @ np.linalg.inv(X_temp.T @ X_temp) @ X_temp.T @ Y))) -
-                      np.log(np.sum(np.square(Y - X @ np.linalg.inv(X.T @ X) @ X.T @ Y)))) / self.K
-            else:
+                      np.log(np.sum(np.square(Y - X @ np.linalg.inv(X.T @ X) @ X.T @ Y))))
+            elif self.G_temp[:, j].sum() > 0 and phase == 1:
                 X_temp = self.X[k][:, self.G_temp[:, j].astype(bool)]
                 Y = self.X[k, :, j:j+1]
                 dE += (np.log(np.sum(np.square(Y - X_temp @ np.linalg.inv(X_temp.T @ X_temp) @ X_temp.T @ Y))) -
-                       np.log(np.sum(np.square(Y))))/ self.K
+                       np.log(np.sum(np.square(Y))))
+            elif self.G[:, j].sum() > 0 and phase == -1:
+                X = self.X[k][:, self.G[:, j].astype(bool)]
+                Y = self.X[k, :, j:j + 1]
+                dE += (np.log(np.sum(np.square(Y))) -
+                      np.log(np.sum(np.square(Y - X @ np.linalg.inv(X.T @ X) @ X.T @ Y))))
         return dE
 
     def _updateG(self, i=0, j=0, phase=1):
@@ -132,9 +145,12 @@ if __name__ == '__main__':
 
     t0 = time.time()
     A = np.zeros((K, p, p))
-    for i in tqdm(range(int(K / group_size))):
-        ges = jointGES(X[group_size*(i-1): group_size*i], d=d)
-        A[group_size*(i-1): group_size*i] = ges.train()
+    progress_bar = tqdm(range(int(K / group_size)))
+    pcs, ncs = [], []
+    for i in progress_bar:
+        ges = jointGES(X[group_size*i: group_size*(i+1)], d=d)
+        A[group_size*i: group_size*(i+1)], pc, nc = ges.train()
+        progress_bar.set_description(f'[pc: {np.mean(pc):.1f} nc: {np.mean(nc)}]')
     t1 = time.time()
     save_dir = os.path.join('saved_models', hp)
     if not os.path.isdir(save_dir):
