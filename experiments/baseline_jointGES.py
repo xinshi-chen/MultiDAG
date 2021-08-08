@@ -19,7 +19,7 @@ class jointGES(object):
         self.G = None
         self.G_temp = None
 
-    def train(self, alpha, lamda=None):
+    def train(self, alpha=None, lamda=None):
         self.lamda = 3 * np.log(self.p) / self.n if lamda is None else lamda
         self._GES()
         self._lasso(alpha)
@@ -46,9 +46,10 @@ class jointGES(object):
             if count:
                 flag = 1
 
-    def _lasso(self, alpha=0.1):
+    def _lasso(self, alpha=None):
+        alpha = 2 * np.sqrt(np.log(self.p) / self.n) if alpha is None else alpha
         self.A = np.zeros((self.K, self.p, self.p))
-        clf = linear_model.Lasso(alpha=alpha)
+        clf = linear_model.Lasso(alpha=alpha, max_iter=10000)
         for k in range(self.K):
             for j in range(self.p):
                 if self.G[:, j].sum() == 0:
