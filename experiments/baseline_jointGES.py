@@ -21,7 +21,7 @@ class jointGES(object):
         self.G_temp = None
 
     def train(self, alpha=None, lamda=None):
-        self.lamda = np.log(self.p) / self.n / self.K if lamda is None else lamda
+        self.lamda = 3 * np.log(self.p) / self.n / self.K if lamda is None else lamda
         positive_count, negative_count = self._GES()
         self._lasso(alpha)
         return self.A, positive_count, negative_count
@@ -35,28 +35,30 @@ class jointGES(object):
         negative_count = 0
         self.G = np.zeros((self.p, self.p))
         phase = 1
-        flag, count = 1, 1
+        flag, best_dE = 1, -1
+        best_i, best_j = -1, -1
         while(flag):
-            if count == 0:
+            if best_dE >= 0:
                 flag = 0
                 phase *= -1
-            count = 0
+            best_dE = 0
             for i in range(self.p):
                 for j in range(self.p):
                     dE = self._deltaE(i, j, phase)
-                    if dE < 0:
-                        count += 1
-                        self._updateG(i, j, phase)
-            if count:
+                    if dE < best_dE:
+                        best_i, best_j = i, j
+                        best_dE = dE
+            if best_dE < 0:
+                self._updateG(best_i, best_j, phase)
                 flag = 1
-            if phase == 1:
-                positive_count += count
-            elif phase == -1:
-                negative_count += count
+                if phase == 1:
+                    positive_count += 1
+                elif phase == -1:
+                    negative_count += 1
         return positive_count, negative_count
 
     def _lasso(self, alpha=None):
-        alpha = np.sqrt(np.log(self.p) / self.n / self.K) if alpha is None else alpha
+        alpha = np.sqrt(np.log(self.p) / self.n) if alpha is None else alpha
         self.A = np.zeros((self.K, self.p, self.p))
         clf = linear_model.Lasso(alpha=alpha, max_iter=100000)
         for k in range(self.K):
@@ -75,22 +77,20 @@ class jointGES(object):
             return 0
         dE = phase * self.lamda
         for k in range(self.K):
+            Y = self.X[k, :, j:j + 1]
             if self.G[:, j].sum() > 0 and self.G_temp[:, j].sum() > 0:
                 X = self.X[k][:, self.G[:, j].astype(bool)]
                 X_temp = self.X[k][:, self.G_temp[:, j].astype(bool)]
-                Y = self.X[k, :, j:j+1]
-                dE += (np.log(np.sum(np.square(Y - X_temp @ np.linalg.inv(X_temp.T @ X_temp) @ X_temp.T @ Y))) -
-                      np.log(np.sum(np.square(Y - X @ np.linalg.inv(X.T @ X) @ X.T @ Y))))
+                dE += (np.log(np.sum(np.square(Y - X_temp @ (np.linalg.inv(X_temp.T @ X_temp) @ (X_temp.T @ Y))))) -
+                      np.log(np.sum(np.square(Y - X @ (np.linalg.inv(X.T @ X) @ (X.T @ Y))))))
             elif self.G_temp[:, j].sum() > 0 and phase == 1:
                 X_temp = self.X[k][:, self.G_temp[:, j].astype(bool)]
-                Y = self.X[k, :, j:j+1]
-                dE += (np.log(np.sum(np.square(Y - X_temp @ np.linalg.inv(X_temp.T @ X_temp) @ X_temp.T @ Y))) -
+                dE += (np.log(np.sum(np.square(Y - X_temp @ (np.linalg.inv(X_temp.T @ X_temp) @ (X_temp.T @ Y))))) -
                        np.log(np.sum(np.square(Y))))
             elif self.G[:, j].sum() > 0 and phase == -1:
                 X = self.X[k][:, self.G[:, j].astype(bool)]
-                Y = self.X[k, :, j:j + 1]
                 dE += (np.log(np.sum(np.square(Y))) -
-                      np.log(np.sum(np.square(Y - X @ np.linalg.inv(X.T @ X) @ X.T @ Y))))
+                      np.log(np.sum(np.square(Y - X @ (np.linalg.inv(X.T @ X) @ (X.T @ Y))))))
         return dE
 
     def _updateG(self, i=0, j=0, phase=1):
