@@ -21,7 +21,7 @@ class jointGES(object):
         self.G_temp = None
 
     def train(self, alpha=None, lamda=None):
-        self.lamda = np.log(self.p) / self.n / self.K if lamda is None else lamda
+        self.lamda = 3 * np.log(self.p) / self.n / self.K if lamda is None else lamda
         positive_count, negative_count = self._GES()
         self._lasso(alpha)
         return self.A, positive_count, negative_count
