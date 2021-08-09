@@ -17,6 +17,7 @@ cmd_opt.add_argument('-K', type=int, default=16, help='number of tasks')
 cmd_opt.add_argument('-d', type=int, default=10, help='number of parents')
 cmd_opt.add_argument('--group_size', type=int, default=2, help='group size used in learning')
 cmd_opt.add_argument('--group_start', type=int, default=0)
+cmd_opt.add_argument('--group_end', type=int, default=4)
 cmd_opt.add_argument('--group_idx', type=int, default=0)
 
 # hyperparameters for training
