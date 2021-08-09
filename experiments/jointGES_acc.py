@@ -47,7 +47,7 @@ for idx in range(len(p)):
             A = np.zeros((cmd_args.K, p[idx], p[idx]))
             tt = []
             for gg in range(int(cmd_args.K / 8 / p[idx])):
-                dir = os.path.join(root, f'{size}_{gg*size}-{(gg+1)*size}.pkl')
+                dir = os.path.join(root, f'{size}_{8*gg*size}-{8*(gg+1)*size}.pkl')
                 with open(dir, 'rb') as handle:
                     t, A_est = pickle.load(handle)
                 A[gg*size:(gg+1)*size] = A_est
