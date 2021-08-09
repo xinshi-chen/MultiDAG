@@ -58,17 +58,24 @@ class jointGES(object):
         return positive_count, negative_count
 
     def _lasso(self, alpha=None):
-        alpha = np.sqrt(np.log(self.p) / self.n / 8) if alpha is None else alpha
+        alpha_max = 1
+        alpha_min = 0
         self.A = np.zeros((self.K, self.p, self.p))
-        clf = linear_model.Lasso(alpha=alpha, max_iter=100000)
-        for k in range(self.K):
-            for j in range(self.p):
-                if self.G[:, j].sum() == 0:
-                    continue
-                X = self.X[k][:, self.G[:, j].astype(bool)]
-                Y = self.X[k, :, j]
-                clf.fit(X, Y)
-                self.A[k, self.G[:, j].astype(bool), j] = clf.coef_
+        while alpha_max - alpha_min > 1e-2:
+            alpha = (alpha_max - alpha_min) / 2
+            clf = linear_model.Lasso(alpha=alpha, max_iter=100000)
+            for k in range(self.K):
+                for j in range(self.p):
+                    if self.G[:, j].sum() == 0:
+                        continue
+                    X = self.X[k][:, self.G[:, j].astype(bool)]
+                    Y = self.X[k, :, j]
+                    clf.fit(X, Y)
+                    self.A[k, self.G[:, j].astype(bool), j] = clf.coef_
+            if np.sum(np.square(self.X - self.X @ self.A)) > self.K * self.p * self.p:
+                alpha_max = alpha
+            else:
+                alpha_min = alpha
 
 
     def _deltaE(self, i=0, j=0, phase=1):
@@ -81,16 +88,16 @@ class jointGES(object):
             if self.G[:, j].sum() > 0 and self.G_temp[:, j].sum() > 0:
                 X = self.X[k][:, self.G[:, j].astype(bool)]
                 X_temp = self.X[k][:, self.G_temp[:, j].astype(bool)]
-                dE += (np.log(np.sum(np.square(Y - X_temp @ (np.linalg.inv(X_temp.T @ X_temp) @ (X_temp.T @ Y))))) -
-                      np.log(np.sum(np.square(Y - X @ (np.linalg.inv(X.T @ X) @ (X.T @ Y))))))
+                dE += ((np.sum(np.square(Y - X_temp @ (np.linalg.inv(X_temp.T @ X_temp) @ (X_temp.T @ Y))))) -
+                      (np.sum(np.square(Y - X @ (np.linalg.inv(X.T @ X) @ (X.T @ Y))))))
             elif self.G_temp[:, j].sum() > 0 and phase == 1:
                 X_temp = self.X[k][:, self.G_temp[:, j].astype(bool)]
-                dE += (np.log(np.sum(np.square(Y - X_temp @ (np.linalg.inv(X_temp.T @ X_temp) @ (X_temp.T @ Y))))) -
-                       np.log(np.sum(np.square(Y))))
+                dE += ((np.sum(np.square(Y - X_temp @ (np.linalg.inv(X_temp.T @ X_temp) @ (X_temp.T @ Y))))) -
+                       (np.sum(np.square(Y))))
             elif self.G[:, j].sum() > 0 and phase == -1:
                 X = self.X[k][:, self.G[:, j].astype(bool)]
-                dE += (np.log(np.sum(np.square(Y))) -
-                      np.log(np.sum(np.square(Y - X @ (np.linalg.inv(X.T @ X) @ (X.T @ Y))))))
+                dE += ((np.sum(np.square(Y))) -
+                      (np.sum(np.square(Y - X @ (np.linalg.inv(X.T @ X) @ (X.T @ Y))))))
         return dE
 
     def _updateG(self, i=0, j=0, phase=1):
