@@ -126,6 +126,7 @@ if __name__ == '__main__':
     d = cmd_args.d
     group_size = cmd_args.group_size
     group_start = cmd_args.group_start
+    group_end = cmd_args.group_end
     w_range = (0.5, 2.0)
     hp_dict = {'p': p,
                'n': n,
@@ -146,13 +147,17 @@ if __name__ == '__main__':
 
     t0 = time.time()
     A = np.zeros((group_size, p, p))
-    progress_bar = tqdm(range(1))
+    progress_bar = tqdm(range(int((group_end - group_start) / group_size)))
+    pcs, ncs, nnz_G, nnz_A = [], [], [], []
     for i in progress_bar:
         ges = jointGES(X[group_start: group_start + group_size], d=d)
         A, pc, nc = ges.train()
-        nnz_G = ges.G.sum()
-        nnz_A = (np.abs(ges.A) > 0).mean(axis=0).sum()
-        progress_bar.set_description(f'[pc: {pc}, nc: {nc}] [nnz_G: {nnz_G:.2f}] [nnz_A: {nnz_A:.2f}]')
+        pcs.append(pc)
+        ncs.append(nc)
+        nnz_G.append(ges.G.sum())
+        nnz_A.append((np.abs(ges.A) > 0).mean(axis=0).sum())
+        progress_bar.set_description(f'[pc: {np.mean(pcs)}, nc: {np.mean(ncs)}] '
+                                     f'[nnz_G: {np.mean(nnz_G):.2f}] [nnz_A: {np.mean(nnz_A):.2f}]')
     t1 = time.time()
     save_dir = os.path.join('saved_models', hp, 'jointGES')
     if not os.path.isdir(save_dir):
