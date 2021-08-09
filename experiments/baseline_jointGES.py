@@ -146,7 +146,7 @@ if __name__ == '__main__':
     X = pickle.load(open(data_dir + '/samples_gid.pkl', 'rb')).numpy()
 
 
-    A = np.zeros((group_start - group_end, p, p))
+    A = np.zeros((group_end - group_start, p, p))
     T = []
     progress_bar = tqdm(range(int((group_end - group_start) / group_size)))
     pcs, ncs, nnz_G, nnz_A = [], [], [], []
