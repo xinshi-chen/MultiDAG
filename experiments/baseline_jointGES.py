@@ -150,7 +150,7 @@ if __name__ == '__main__':
     progress_bar = tqdm(range(int((group_end - group_start) / group_size)))
     pcs, ncs, nnz_G, nnz_A = [], [], [], []
     for i in progress_bar:
-        ges = jointGES(X[group_start: group_start + group_size], d=d)
+        ges = jointGES(X[group_start + i * group_size: group_start + (i+1) * group_size], d=d)
         A, pc, nc = ges.train()
         pcs.append(pc)
         ncs.append(nc)
@@ -162,5 +162,5 @@ if __name__ == '__main__':
     save_dir = os.path.join('saved_models', hp, 'jointGES')
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
-    with open(os.path.join(save_dir, f'{group_start}-{group_start + group_size}.pkl'), 'wb') as handle:
+    with open(os.path.join(save_dir, f'{group_size}_{group_start}-{group_end}.pkl'), 'wb') as handle:
         pickle.dump([t1-t0, A], handle)
