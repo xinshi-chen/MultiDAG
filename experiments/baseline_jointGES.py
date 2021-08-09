@@ -58,11 +58,11 @@ class jointGES(object):
         return positive_count, negative_count
 
     def _lasso(self, alpha=None):
-        alpha_max = 1
-        alpha_min = 0
+        self.alpha_max = 1
+        self.alpha_min = np.log(self.p) / self.n / self.K
         self.A = np.zeros((self.K, self.p, self.p))
-        while alpha_max - alpha_min > 1e-2:
-            alpha = (alpha_max - alpha_min) / 2
+        while self.alpha_max - self.alpha_min > 1e-2:
+            alpha = (self.alpha_max - self.alpha_min) / 2
             clf = linear_model.Lasso(alpha=alpha, max_iter=100000)
             for k in range(self.K):
                 for j in range(self.p):
@@ -72,10 +72,11 @@ class jointGES(object):
                     Y = self.X[k, :, j]
                     clf.fit(X, Y)
                     self.A[k, self.G[:, j].astype(bool), j] = clf.coef_
+            self.A[self.A < 0.5] = 0
             if np.sum(np.square(self.X - self.X @ self.A)) > self.K * self.p * self.p:
-                alpha_max = alpha
+                self.alpha_max = alpha
             else:
-                alpha_min = alpha
+                self.alpha_min = alpha
 
 
     def _deltaE(self, i=0, j=0, phase=1):
@@ -161,7 +162,8 @@ if __name__ == '__main__':
         A[group_size*i: group_size*(i+1)], pc, nc = ges.train()
         nnz_G.append(ges.G.sum())
         nnz_A.append((np.abs(ges.A) > 0).mean(axis=0).sum())
-        progress_bar.set_description(f'[nnz_G: {np.mean(nnz_G):.2f}] [nnz_A: {np.mean(nnz_A):.2f}]')
+        alpha = (ges.alpha_max + ges.alpha_min) / 2
+        progress_bar.set_description(f'[nnz_G: {np.mean(nnz_G):.2f}] [nnz_A: {np.mean(nnz_A):.2f}] [alpha: {alpha:.2f}]')
     t1 = time.time()
     save_dir = os.path.join('saved_models', hp)
     if not os.path.isdir(save_dir):
