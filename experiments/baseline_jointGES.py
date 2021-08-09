@@ -154,10 +154,14 @@ if __name__ == '__main__':
     A = np.zeros((K, p, p))
     progress_bar = tqdm(range(int(K / group_size)))
     pcs, ncs = [], []
+    nnz_G = []
+    nnz_A = []
     for i in progress_bar:
         ges = jointGES(X[group_size*i: group_size*(i+1)], d=d)
         A[group_size*i: group_size*(i+1)], pc, nc = ges.train()
-        progress_bar.set_description(f'[pc: {np.mean(pc):.1f} nc: {np.mean(nc)}]')
+        nnz_G.append(ges.G.sum())
+        nnz_A.append((np.abs(ges.A) > 0).mean(axis=0).sum())
+        progress_bar.set_description(f'[nnz_G: {np.mean(nnz_G):.2f}] [nnz_A: {np.mean(nnz_A):.2f}]')
     t1 = time.time()
     save_dir = os.path.join('saved_models', hp)
     if not os.path.isdir(save_dir):
