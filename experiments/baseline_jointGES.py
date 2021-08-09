@@ -20,10 +20,10 @@ class jointGES(object):
         self.G = None
         self.G_temp = None
 
-    def train(self, alpha=None, lamda=None):
+    def train(self, lamda=None):
         self.lamda = 3 * np.log(self.p) / self.n / self.K if lamda is None else lamda
         positive_count, negative_count = self._GES()
-        self._lasso(alpha)
+        self._lasso()
         return self.A, positive_count, negative_count
 
     def _GES(self):
@@ -57,26 +57,18 @@ class jointGES(object):
                     negative_count += 1
         return positive_count, negative_count
 
-    def _lasso(self, alpha=None):
-        self.alpha_max = 1
-        self.alpha_min = np.log(self.p) / self.n / self.K
+    def _lasso(self):
         self.A = np.zeros((self.K, self.p, self.p))
-        while self.alpha_max - self.alpha_min > 1e-2:
-            alpha = (self.alpha_max - self.alpha_min) / 2
-            clf = linear_model.Lasso(alpha=alpha, max_iter=100000)
-            for k in range(self.K):
-                for j in range(self.p):
-                    if self.G[:, j].sum() == 0:
-                        continue
-                    X = self.X[k][:, self.G[:, j].astype(bool)]
-                    Y = self.X[k, :, j]
-                    clf.fit(X, Y)
-                    self.A[k, self.G[:, j].astype(bool), j] = clf.coef_
-            self.A[self.A < 0.5] = 0
-            if np.sum(np.square(self.X - self.X @ self.A)) > self.K * self.p * self.p:
-                self.alpha_max = alpha
-            else:
-                self.alpha_min = alpha
+        alpha = np.sqrt(np.log(self.p) / self.n) / self.K
+        clf = linear_model.Lasso(alpha=alpha, max_iter=100000)
+        for k in range(self.K):
+            for j in range(self.p):
+                if self.G[:, j].sum() == 0:
+                    continue
+                X = self.X[k][:, self.G[:, j].astype(bool)]
+                Y = self.X[k, :, j]
+                clf.fit(X, Y)
+                self.A[k, self.G[:, j].astype(bool), j] = clf.coef_
 
 
     def _deltaE(self, i=0, j=0, phase=1):
@@ -133,6 +125,7 @@ if __name__ == '__main__':
     s = cmd_args.s
     d = cmd_args.d
     group_size = cmd_args.group_size
+    group_start = cmd_args.group_start
     w_range = (0.5, 2.0)
     hp_dict = {'p': p,
                'n': n,
@@ -152,21 +145,17 @@ if __name__ == '__main__':
     X = pickle.load(open(data_dir + '/samples_gid.pkl', 'rb')).numpy()
 
     t0 = time.time()
-    A = np.zeros((K, p, p))
-    progress_bar = tqdm(range(int(K / group_size)))
-    pcs, ncs = [], []
-    nnz_G = []
-    nnz_A = []
+    A = np.zeros((group_size, p, p))
+    progress_bar = tqdm(range(1))
     for i in progress_bar:
-        ges = jointGES(X[group_size*i: group_size*(i+1)], d=d)
-        A[group_size*i: group_size*(i+1)], pc, nc = ges.train()
-        nnz_G.append(ges.G.sum())
-        nnz_A.append((np.abs(ges.A) > 0).mean(axis=0).sum())
-        alpha = (ges.alpha_max + ges.alpha_min) / 2
-        progress_bar.set_description(f'[nnz_G: {np.mean(nnz_G):.2f}] [nnz_A: {np.mean(nnz_A):.2f}] [alpha: {alpha:.2f}]')
+        ges = jointGES(X[group_start: group_start + group_size], d=d)
+        A, pc, nc = ges.train()
+        nnz_G = ges.G.sum()
+        nnz_A = (np.abs(ges.A) > 0).mean(axis=0).sum()
+        progress_bar.set_description(f'[pc: {pc}, nc: {nc}] [nnz_G: {nnz_G:.2f}] [nnz_A: {nnz_A:.2f}]')
     t1 = time.time()
-    save_dir = os.path.join('saved_models', hp)
+    save_dir = os.path.join('saved_models', hp, 'jointGES')
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
-    with open(os.path.join(save_dir, f'jointGES-group_size-{group_size}.pkl'), 'wb') as handle:
+    with open(os.path.join(save_dir, f'{group_start}-{group_start + group_size}.pkl'), 'wb') as handle:
         pickle.dump([t1-t0, A], handle)
