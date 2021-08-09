@@ -20,11 +20,13 @@ sizes = [1, 2, 4, 8, 16, 32]
 for idx in range(len(p)):
     # group_size * sample_size * task * configs
     title = ['fdr', 'tpr', 'fpr', 'shd', 'nnz']
+    t = {key: {n: [] for n in n_samples} for key in sizes}
     fdr = {key: {n: [] for n in n_samples} for key in sizes}
     tpr = {key: {n: [] for n in n_samples} for key in sizes}
     fpr = {key: {n: [] for n in n_samples} for key in sizes}
     shd = {key: {n: [] for n in n_samples} for key in sizes}
     nnz = {key: {n: [] for n in n_samples} for key in sizes}
+    t_std = {key: {n: [] for n in n_samples} for key in sizes}
     fdr_std = deepcopy(fdr)
     tpr_std = deepcopy(tpr)
     fpr_std = deepcopy(fpr)
@@ -40,11 +42,16 @@ for idx in range(len(p)):
                      w_range=(0.5, 2.0), verbose=False)
         # temp_x = db.X.detach().numpy()
         root = f'./saved_models/p-{p[idx]}_n-{n}_K-{cmd_args.K}_s-{s[idx]}_s0-{s0[idx]}_d-{d[idx]}_' \
-               f'w_range_l-0.5_w_range_u-2.0/'
+               f'w_range_l-0.5_w_range_u-2.0/jointGES/'
         for size in sizes:
-            dir = os.path.join(root, f'jointGES-group_size-{size}.pkl')
-            with open(dir, 'rb') as handle:
-                t, A = pickle.load(handle)
+            A = np.zeros((cmd_args.K, p[idx], p[idx]))
+            tt = []
+            for gg in range(int(cmd_args.K / 8 / p[idx])):
+                dir = os.path.join(root, f'{size}_{gg*size}-{(gg+1)*size}.pkl')
+                with open(dir, 'rb') as handle:
+                    t, A_est = pickle.load(handle)
+                A[gg*size:(gg+1)*size] = A_est
+                tt.append(t)
             for k in range(cmd_args.K):
                 G_true = np.abs(np.sign(db.G[k]))
                 G_est = np.abs(A[k])
@@ -63,11 +70,14 @@ for idx in range(len(p)):
             temp_fpr = list(fpr[size][n])
             temp_shd = list(shd[size][n])
             temp_nnz = list(nnz[size][n])
+            temp_t = list(t[size][n])
+            t[size][n] = np.mean(temp_t) / 8
             fdr[size][n] = np.mean(temp_fdr)
             tpr[size][n] = np.mean(temp_tpr)
             fpr[size][n] = np.mean(temp_fpr)
             shd[size][n] = np.mean(temp_shd)
             nnz[size][n] = np.mean(temp_nnz)
+            t[size][n] = np.std(temp_t) / 8
             fdr_std[size][n] = np.std(temp_fdr)
             tpr_std[size][n] = np.std(temp_tpr)
             fpr_std[size][n] = np.std(temp_fpr)
@@ -84,6 +94,12 @@ for idx in range(len(p)):
     fpr_std = np.array([[fpr_std[size][n] for n in n_samples] for size in sizes])
     shd_std = np.array([[shd_std[size][n] for n in n_samples] for size in sizes])
     nnz_std = np.array([[nnz_std[size][n] for n in n_samples] for size in sizes])
+    print(f'### time for p = {p[idx]} ###')
+    for k in range(len(sizes)):
+        log = f'k={int(2 ** k)} & '
+        for l in range(len(n_samples)):
+            log += f'${t[k][l]:.4f}\pm{t_std[k][l]:.4f}$ & '
+        print(log[:-2] + '\\')
     print(f'### fdr for p = {p[idx]} ###')
     for k in range(len(sizes)):
         log = f'k={int(2**k)} & '
