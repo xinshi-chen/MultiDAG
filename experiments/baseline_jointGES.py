@@ -145,22 +145,26 @@ if __name__ == '__main__':
     G = pickle.load(open(data_dir + '/DAGs.pkl', 'rb'))
     X = pickle.load(open(data_dir + '/samples_gid.pkl', 'rb')).numpy()
 
-    t0 = time.time()
-    A = np.zeros((group_size, p, p))
+
+    A = np.zeros((group_start - group_end, p, p))
+    T = []
     progress_bar = tqdm(range(int((group_end - group_start) / group_size)))
     pcs, ncs, nnz_G, nnz_A = [], [], [], []
     for i in progress_bar:
         ges = jointGES(X[group_start + i * group_size: group_start + (i+1) * group_size], d=d)
-        A, pc, nc = ges.train()
+        t0 = time.time()
+        A[i * group_size: (i+1) * group_size], pc, nc = ges.train()
+        t1 = time.time()
+        T.append(t1 - t0)
         pcs.append(pc)
         ncs.append(nc)
         nnz_G.append(ges.G.sum())
         nnz_A.append((np.abs(ges.A) > 0).mean(axis=0).sum())
         progress_bar.set_description(f'[pc: {np.mean(pcs)}, nc: {np.mean(ncs)}] '
                                      f'[nnz_G: {np.mean(nnz_G):.2f}] [nnz_A: {np.mean(nnz_A):.2f}]')
-    t1 = time.time()
+
     save_dir = os.path.join('saved_models', hp, 'jointGES')
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     with open(os.path.join(save_dir, f'{group_size}_{group_start}-{group_end}.pkl'), 'wb') as handle:
-        pickle.dump([t1-t0, A], handle)
+        pickle.dump([T, A], handle)
