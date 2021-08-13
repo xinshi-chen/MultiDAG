@@ -88,7 +88,7 @@ if __name__ == '__main__':
         nnz_A.append((np.abs(myGOD.A) > 0).sum())
         progress_bar.set_description(f'[nnz_A: {np.mean(nnz_A):.2f}]')
 
-    save_dir = os.path.join('saved_models', hp, 'jointGES')
+    save_dir = os.path.join('saved_models', hp, 'GOD')
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     with open(os.path.join(save_dir, f'{group_size}_{group_start}-{group_end}.pkl'), 'wb') as handle:
