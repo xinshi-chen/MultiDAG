@@ -20,7 +20,8 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
     # G_DAG
     assert group_size <= db.K
     hyperparameter = {'rho': cmd_args.rho, 'lambda': cmd_args.ld, 'c': cmd_args.c, 'gamma': cmd_args.gamma,
-                      'eta': cmd_args.eta, 'mu': cmd_args.mu, 'dual_interval': cmd_args.dual_interval}
+                      'eta': cmd_args.eta, 'mu': cmd_args.mu, 'dual_interval': cmd_args.dual_interval,
+                      'alpha': cmd_args.alpha}
     hp = ''
     for key in hyperparameter:
         hp += key + '-' + f'{hyperparameter[key]}' + '_'
@@ -31,9 +32,6 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
         g_dag = G_DAG(num_dags=group_size, p=db.p).to(DEVICE)
     else:
         g_dag = G_DAG(num_dags=group_size, p=cmd_args.p).to(DEVICE)
-
-    if cmd_args.ld > 1 and cmd_args.c > 1:
-        g_dag.T = db.Perm
 
     # ---------------------
     #  Optimizer
@@ -64,27 +62,30 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
 
 
 if __name__ == '__main__':
-    # check K is the power of 2
-    results = {10: [], 20: [], 40: [], 80: [], 160: [], 320: [], 640: []}
-    group_size = [1] * 32 + [2] * 16 + [4] * 8 + [8] * 7 + [16] * 5
-    group_start = list(range(32)) + list(range(0, 32, 2)) + list(range(0, 32, 4)) + list(range(0, 28, 4)) + list(
-        range(0, 20, 4))
-    nums = [0, 32, 48, 56, 63, 68]
-    if cmd_args.group_size == 1:
-        i = 0
-    elif cmd_args.group_size == 2:
-        i = 1
-    elif cmd_args.group_size == 4:
-        i = 2
-    elif cmd_args.group_size == 8:
-        i = 3
-    elif cmd_args.group_size == 16:
-        i = 4
+    # results = {10: [], 20: [], 40: [], 80: [], 160: [], 320: [], 640: []}
+    if cmd_args.K == 32:
+        group_size = [1] * 32 + [2] * 16 + [4] * 8 + [8] * 4 + [16] * 5
+        group_start = list(range(32)) + list(range(0, 32, 2)) + list(range(0, 32, 4)) + list(range(0, 28, 4)) + list(
+            range(0, 20, 4))
+        nums = [0, 32, 48, 56, 63, 68]
+    elif cmd_args.K == 64:
+        group_size = [1] * 64 + [2] * 32 + [4] * 16 + [8] * 8 + [16] * 4 + [32] * 2
+        group_start = list(range(64)) + list(range(0, 64, 2)) + list(range(0, 64, 4)) + list(range(0, 64, 8)) + list(
+            range(0, 64, 16)) + list(range(0, 64, 32))
+        nums = list(range(0, 64, 16)) + list(range(64, 96, 8)) + list(range(96, 112, 4)) + list(range(112, 120, 2)) + list(range(120, 124)) + list(range(124, 126)) + [126]
+        print(len(nums))
+    elif cmd_args.K == 256:
+        group_size = [1] * 256 + [2] * 128 + [4] * 64 + [8] * 32 + [16] * 16 + [32] * 8
+        group_start = list(range(256)) + list(range(0, 256, 2)) + list(range(0, 256, 4)) + list(range(0, 256, 8)) + \
+            list(range(0, 256, 16)) + list(range(0, 256, 32))
+        nums = list(range(0, 256, 64)) + list(range(256, 384, 32)) + list(range(384, 448, 16)) + \
+               list(range(448, 480, 8)) + list(range(480, 496, 4)) + list(range(496, 504, 4)) + [504]
     else:
         raise NotImplementedError
-    for k in range(nums[i], nums[i+1]):
-        cmd_args.group_start = group_start[k]
 
+    for k in range(nums[cmd_args.group_idx], nums[cmd_args.group_idx+1]):
+        cmd_args.group_start = group_start[k]
+        cmd_args.group_size = group_size[k]
         db = Dataset(p=cmd_args.p,
                      n=cmd_args.n_sample,
                      K=cmd_args.K,

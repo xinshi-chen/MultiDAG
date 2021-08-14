@@ -272,7 +272,7 @@ def sampler(W, n, f=None, g=None):
     return X, torch.sum(neg_log_likelihood, dim=-1)
 
 
-def count_accuracy(B_true, B_est):
+def count_accuracy(B_true, B_est, verbose=False):
     """Compute various accuracy metrics for B_est.
         true positive = predicted association exists in condition in correct direction
         reverse = predicted association exists in condition in opposite direction
@@ -300,7 +300,8 @@ def count_accuracy(B_true, B_est):
             if B_est is None:
                 raise ValueError('B_est should be a DAG, fail to project to DAG')
             else:
-                print("Warning: B_est is not DAG, use projection")
+                if verbose:
+                    print("Warning: B_est is not DAG, use projection")
     d = B_true.shape[0]
     # linear index of nonzeros
     pred_und = np.flatnonzero(B_est == -1)
