@@ -55,9 +55,7 @@ for idx in range(len(p)):
                 G_est = np.abs(A[k])
                 G_est[G_est < cmd_args.threshold] = 0
                 G_est = np.sign(G_est)
-                print(G_est.sum())
                 r = count_accuracy(G_true, G_est)
-                print(r)
                 fdr[size][n].append(r['fdr'])
                 tpr[size][n].append(r['tpr'])
                 fpr[size][n].append(r['fpr'])
