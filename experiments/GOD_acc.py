@@ -100,7 +100,7 @@ for idx in range(len(p)):
     for k in range(len(sizes)):
         log = f'k={int(2 ** k)} & '
         for l in range(len(n_samples)):
-            log += f'${t[k][l]:.0f}\pm{t_std[k][l]:.0f}$ & '
+            log += f'${t[k][l]:.2f}\pm{t_std[k][l]:.2f}$ & '
         print(log[:-2] + '\\\\')
     print(f'### fdr for p = {p[idx]} ###')
     for k in range(len(sizes)):
