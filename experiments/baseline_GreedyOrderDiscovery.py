@@ -41,9 +41,10 @@ class GreedyOrderDicovery(object):
         clf = linear_model.Lasso(alpha=alpha, max_iter=100000)
         for j in range(1, self.p):
             X = self.X[:, order[:j]]
-            Y = self.X[:, j]
+            Y = self.X[:, order[j]]
             clf.fit(X, Y)
-            self.A[order[:j], j] = clf.coef_
+            self.A[order[:j], order[j]] = clf.coef_
+        assert is_dag(self.A)
 
 
 if __name__ == '__main__':
