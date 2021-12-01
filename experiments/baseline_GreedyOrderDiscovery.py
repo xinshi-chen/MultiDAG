@@ -29,7 +29,7 @@ class GreedyOrderDicovery(object):
         for p in range(self.p - 1):
             var = np.var(X, axis=0)
             idx = np.argmin(var + mask_idx * 1e8)
-            beta = np.sum(X[:, idx:idx+1] * X, axis=0) / (np.sum(X[:, idx]**2))
+            beta = np.sum(X[:, idx:idx+1] * X, axis=0) / (np.sum(X[:, idx]**2) + 1e-20)
             X -= X[:, idx:idx+1] * beta.reshape(1, self.p)
             mask_idx[idx] += 1
             ordered_idx.append(idx)
@@ -41,9 +41,10 @@ class GreedyOrderDicovery(object):
         clf = linear_model.Lasso(alpha=alpha, max_iter=100000)
         for j in range(1, self.p):
             X = self.X[:, order[:j]]
-            Y = self.X[:, j]
+            Y = self.X[:, order[j]]
             clf.fit(X, Y)
-            self.A[order[:j], j] = clf.coef_
+            self.A[order[:j], order[j]] = clf.coef_
+        assert is_dag(self.A)
 
 
 if __name__ == '__main__':

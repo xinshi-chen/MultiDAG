@@ -40,18 +40,16 @@ for idx in range(len(p)):
                      s=s[idx],
                      d=d[idx],
                      w_range=(0.5, 2.0), verbose=False)
-        # temp_x = db.X.detach().numpy()
         root = f'./saved_models/p-{p[idx]}_n-{n}_K-{cmd_args.K}_s-{s[idx]}_s0-{s0[idx]}_d-{d[idx]}_' \
                f'w_range_l-0.5_w_range_u-2.0/jointGES/'
         for size in sizes:
             A = np.zeros((cmd_args.K, p[idx], p[idx]))
-            tt = []
-            for gg in range(int(cmd_args.K / 8 / p[idx])):
+            for gg in range(int(cmd_args.K / 8 / size)):
                 dir = os.path.join(root, f'{size}_{8*gg*size}-{8*(gg+1)*size}.pkl')
                 with open(dir, 'rb') as handle:
-                    t, A_est = pickle.load(handle)
-                A[gg*size:(gg+1)*size] = A_est
-                tt.append(t)
+                    tt, A_est = pickle.load(handle)
+                A[gg*size*8:(gg+1)*size*8] = A_est
+                t[size][n].extend(tt)
             for k in range(cmd_args.K):
                 G_true = np.abs(np.sign(db.G[k]))
                 G_est = np.abs(A[k])
@@ -70,25 +68,27 @@ for idx in range(len(p)):
             temp_fpr = list(fpr[size][n])
             temp_shd = list(shd[size][n])
             temp_nnz = list(nnz[size][n])
-            temp_t = list(t[size][n])
-            t[size][n] = np.mean(temp_t) / 8
+            temp_t = list(t[size][n]).copy()
+            t[size][n] = np.mean(temp_t)
             fdr[size][n] = np.mean(temp_fdr)
             tpr[size][n] = np.mean(temp_tpr)
             fpr[size][n] = np.mean(temp_fpr)
             shd[size][n] = np.mean(temp_shd)
             nnz[size][n] = np.mean(temp_nnz)
-            t[size][n] = np.std(temp_t) / 8
+            t_std[size][n] = np.std(temp_t)
             fdr_std[size][n] = np.std(temp_fdr)
             tpr_std[size][n] = np.std(temp_tpr)
             fpr_std[size][n] = np.std(temp_fpr)
             shd_std[size][n] = np.std(temp_shd)
             nnz_std[size][n] = np.std(temp_nnz)
+    t = np.array([[t[size][n] for n in n_samples] for size in sizes])
     fdr = np.array([[fdr[size][n] for n in n_samples] for size in sizes])
     tpr = np.array([[tpr[size][n] for n in n_samples] for size in sizes])
     fpr = np.array([[fpr[size][n] for n in n_samples] for size in sizes])
     shd = np.array([[shd[size][n] for n in n_samples] for size in sizes])
     nnz = np.array([[nnz[size][n] for n in n_samples] for size in sizes])
 
+    t_std = np.array([[t_std[size][n] for n in n_samples] for size in sizes])
     fdr_std = np.array([[fdr_std[size][n] for n in n_samples] for size in sizes])
     tpr_std = np.array([[tpr_std[size][n] for n in n_samples] for size in sizes])
     fpr_std = np.array([[fpr_std[size][n] for n in n_samples] for size in sizes])
@@ -98,35 +98,35 @@ for idx in range(len(p)):
     for k in range(len(sizes)):
         log = f'k={int(2 ** k)} & '
         for l in range(len(n_samples)):
-            log += f'${t[k][l]:.4f}\pm{t_std[k][l]:.4f}$ & '
-        print(log[:-2] + '\\')
+            log += f'${t[k][l]:.0f}\pm{t_std[k][l]:.0f}$ & '
+        print(log[:-2] + '\\\\')
     print(f'### fdr for p = {p[idx]} ###')
     for k in range(len(sizes)):
         log = f'k={int(2**k)} & '
         for l in range(len(n_samples)):
-            log += f'${fdr[k][l]:.4f}\pm{fdr_std[k][l]:.4f}$ & '
-        print(log[:-2] + '\\')
+            log += f'${fdr[k][l]:.3f}\pm{fdr_std[k][l]:.3f}$ & '
+        print(log[:-2] + '\\\\')
     print(f'### tpr for p = {p[idx]} ###')
     for k in range(len(sizes)):
         log = f'k={int(2**k)} & '
         for l in range(len(n_samples)):
-            log += f'${tpr[k][l]:.4f}\pm{tpr_std[k][l]:.4f}$ & '
-        print(log[:-2] + '\\')
+            log += f'${tpr[k][l]:.3f}\pm{tpr_std[k][l]:.3f}$ & '
+        print(log[:-2] + '\\\\')
     print(f'### fpr for p = {p[idx]} ###')
     for k in range(len(sizes)):
         log = f'k={int(2**k)} & '
         for l in range(len(n_samples)):
-            log += f'${fpr[k][l]:.4f}\pm{fpr_std[k][l]:.4f}$ & '
-        print(log[:-2] + '\\')
+            log += f'${fpr[k][l]:.3f}\pm{fpr_std[k][l]:.3f}$ & '
+        print(log[:-2] + '\\\\')
     print(f'### shd for p = {p[idx]} ###')
     for k in range(len(sizes)):
         log = f'k={int(2**k)} & '
         for l in range(len(n_samples)):
-            log += f'${shd[k][l]:.4f}\pm{shd_std[k][l]:.4f}$ & '
-        print(log[:-2] + '\\')
+            log += f'${shd[k][l]:.0f}\pm{shd_std[k][l]:.0f}$ & '
+        print(log[:-2] + '\\\\')
     print(f'### nnz for p = {p[idx]} ###')
     for k in range(len(sizes)):
         log = f'k={int(2**k)} & '
         for l in range(len(n_samples)):
-            log += f'${nnz[k][l]:.4f}\pm{nnz_std[k][l]:.4f}$ & '
-        print(log[:-2] + '\\')
+            log += f'${nnz[k][l]:.0f}\pm{nnz_std[k][l]:.0f}$ & '
+        print(log[:-2] + '\\\\')
