@@ -1,9 +1,7 @@
 import torch
 import torch.nn.functional as F
-import torch.nn as nn
 from tqdm import tqdm
-from multidag.common.consts import DEVICE, OPTIMIZER, NONLINEARITIES
-from multidag.common.utils import weights_init
+from multidag.common.consts import DEVICE, OPTIMIZER
 from multidag.dag_utils import h_W, count_accuracy, is_dag
 from multidag.model import LSEM
 import os
@@ -35,37 +33,9 @@ def W_dist(w1, w2, norm='l1'):
     return d.view(m, -1).sum(dim=-1).mean()
 
 
-class MLP(nn.Module):
-    def __init__(self, hidden_dims, nonlinearity='relu'):
-        super(MLP, self).__init__()
-        hidden_dims = list(map(int, hidden_dims.split("-")))
-        # output size is 1
-        hidden_dims.append(1)
-
-        layers = []
-        activation_fns = []
-        # input size is 1
-        prev_size = 1
-        for h in hidden_dims:
-            layers.append(nn.Linear(prev_size, h))
-            prev_size = h
-            activation_fns.append(NONLINEARITIES[nonlinearity])
-
-        self.layers = nn.ModuleList(layers)
-        self.activation_fns = nn.ModuleList(activation_fns)
-        weights_init(self)
-
-    def forward(self, x):
-        for l, layer in enumerate(self.layers):
-            x = layer(x)
-            if l + 1 < len(self.layers):
-                x = self.activation_fns[l](x)
-        return x
-
-
 class Trainer:
     def __init__(self, se, gn, g_dag, optimizer, data_base, constraint_type='notears',
-                 K_mask=None, hyperparameters={}, hidden_dims='32-32', nonlinearity='relu'):
+                 K_mask=None, hyperparameters={}):
         self.se = se
         self.gn = gn
         self.g_dag = g_dag
@@ -99,13 +69,6 @@ class Trainer:
         self.ld = torch.ones(size=[len(K_mask)]).to(DEVICE) * self.hyperparameter['lambda']
         self.c = torch.ones(size=[len(K_mask)]).to(DEVICE) * self.hyperparameter['c']
 
-        # MLP layers
-        # the input output dimensions are both 1.
-        self.mlp_layers = MLP(hidden_dims=hidden_dims, nonlinearity=nonlinearity).to(DEVICE)
-        self.opt_mlp = OPTIMIZER['adam'](self.mlp_layers.parameters(),
-                                         lr=1e-3,
-                                         weight_decay=1e-5)
-
     def train(self, epochs, start_epoch=0, loss_type=None):
         """
         training logic
@@ -119,22 +82,19 @@ class Trainer:
         print('final use rho = {:.4f}'.format(self.rho))
         return self.save()
 
-    def _train_epoch(self, epoch, X, progress_bar, dsc, loss_type, num_primal_steps=100):
+    def _train_epoch(self, epoch, X, progress_bar, dsc, loss_type):
 
         self.g_dag.train()
-        self.mlp_layers.train()
+
         # -----------------
         #  primal step
         # -----------------
         self.optimizer.zero_grad()
-        self.opt_mlp.zero_grad()
 
         loss, h_D, log = self.get_loss(X, self.ld, self.c)
         loss.backward()
 
         self.optimizer.step()
-        self.opt_mlp.step()
-
         self.g_dag.proximal_update(self.gamma)
         # -----------------
         #  dual step
@@ -143,10 +103,10 @@ class Trainer:
             self.gamma *= 0.99
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
-            if log['SE'] / self.se > log['l1/l2'] / self.gn + 0.05:
-                self.rho *= 0.9
-            elif log['SE'] / self.se < log['l1/l2'] / self.gn - 0.05:
-                self.rho *= 1.1
+            # if log['SE'] / self.se > 1.05:
+            #     self.rho *= 0.95
+            # elif log['SE'] / self.se < 0.95:
+            #     self.rho *= 1.05
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
 
@@ -158,24 +118,8 @@ class Trainer:
 
     def get_loss(self, X, ld, c):
         G_D = self.g_dag.G * self.g_dag.T
-
-        # Version 1: G in last layer
-        X = X.unsqueeze(dim=-1)  # [K, n, d, 1] tensor
-        # apply a few non-linear layers
-        f_X = self.mlp_layers(X).squeeze(dim=-1)  # [K, n, d] tensor
-        G_f_X = torch.einsum('bji,bnj->bnij', G_D, f_X)  # [K, n, d, d] tensor
-        f_GX = torch.sum(G_f_X, dim=-1)  # [K, n, d] tensor
-        X = X.squeeze()
-
-        # # Version 2: G in first layer
-        # # Get G_D * X
-        # GX = torch.einsum('bji,bnj->bnij', G_D, X)  # [K, n, d, d] tensor
-        # GX = torch.sum(GX, dim=-1, keepdim=True)  # [K, n, d, 1]
-        # # Add a few non-linear layers
-        # f_GX = self.mlp_layers(GX.float()).squeeze(dim=-1)  # [K, n, d]
-
         # Squared Error
-        loss_se = ((X - f_GX) ** 2).sum([2]).mean()
+        loss_se = LSEM.SE(G_D, X)
 
         # dagness constraints
         one = (self.g_dag.T - 1).abs().mean()
@@ -189,13 +133,12 @@ class Trainer:
         # if h_D.sum().item() == 0:
         #     for i in range(len(h_D)):
         #         assert is_dag(G_D[i].detach().numpy())
-        lambda_h_wD = (ld * h_D).mean()   # lagrangian term
-        c_hw_2 = 0.5 * (c * h_D * h_D).mean()  # l2 penalty
+        lambda_h_wD = (ld * h_D).mean() * self.db.p  # lagrangian term
+        c_hw_2 = 0.5 * (c * h_D * h_D).mean() * self.db.p # l2 penalty
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
-        rho_w_l1 = self.rho * np.sqrt(self.db.p * np.log(self.db.p) / self.db.n /
-                   X.shape[0] ** 2) * w_l1_l2
+        rho_w_l1 = self.rho * w_l1_l2 / X.shape[0] / (self.db.n / 10)
 
         loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
 
