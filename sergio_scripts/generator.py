@@ -65,7 +65,7 @@ def _perturb(T, n_perturbs, w_range: tuple = (0.5, 2.0)):
     return g
 
 
-def _simulate_sergio(G, n_samples, n_cells=10, hill=2, mr_range: tuple = (0.5, 2.0)):
+def _simulate_sergio(G, n_samples, hill=2, mr_range: tuple = (0.5, 2.0)):
     def write_rows(path, rows):
         file = open(path, 'w')
         for row in rows:
@@ -99,7 +99,8 @@ def _simulate_sergio(G, n_samples, n_cells=10, hill=2, mr_range: tuple = (0.5, 2
     write_rows(mr_path, mr_rows)
     write_rows(grn_path, grn_rows)
 
-    sim = sergio(number_genes=len(nodes), number_bins=n_samples, number_sc=1, noise_params=0.2, decays=0.8, sampling_state=15, noise_type='sp')
+    sim = sergio(number_genes=len(nodes), number_bins=n_samples, number_sc=1, noise_params=0.2, decays=0.8,
+                 sampling_state=15, noise_type='sp')
     sim.build_graph(input_file_taregts=grn_path, input_file_regs=mr_path)
     sim.simulate()
     expr = sim.getExpressions()
@@ -110,7 +111,7 @@ def _simulate_sergio(G, n_samples, n_cells=10, hill=2, mr_range: tuple = (0.5, 2
 if __name__ == '__main__':
     cmd_opt = argparse.ArgumentParser(description='')
     cmd_opt.add_argument('-dot_path', type=str, default='./regulatory_networks/Ecoli_100_net1.dot', help='path to GRN .dot file')
-    cmd_opt.add_argument('-save_dir', type=str, default='../data/', help='directory to save simulation')
+    cmd_opt.add_argument('-save_dir', type=str, default='./sergio_output/', help='directory to save simulation')
     cmd_opt.add_argument('-K', type=int, default=10, help='number of tasks')
     cmd_opt.add_argument('-e', type=int, default=10, help='number of edge perturbations to make per task')
     cmd_opt.add_argument('-n', type=int, default=300, help='number of samples per task')
@@ -120,15 +121,14 @@ if __name__ == '__main__':
     w_range = (0.5, 10.0)
     T = _read_dot(args.dot_path, w_range=w_range)
     p = len(T.nodes)
-    G = [T] + [_perturb(T, args.e, w_range=w_range) for _ in range(args.K - 1)]
+    G = [_perturb(T, args.e, w_range=w_range) for _ in range(args.K)]
     exprs = [_simulate_sergio(g, args.n, hill=args.nh, mr_range=w_range) for g in G]
     expr_mat = np.concatenate([expr for expr in exprs], axis=-1).T
     task_labels = [i // args.n for i in range(len(G) * args.n)]
-    # problem could be conversion to adjacency
     T_adj = nx.convert_matrix.to_numpy_matrix(T).T
     G_adj = [nx.convert_matrix.to_numpy_matrix(g).T for g in G]
 
     if not os.path.isdir(args.save_dir):
         os.mkdir(args.save_dir)
-    savepath = os.path.join(args.save_dir, f"sergio_K-{args.K}_p-{p}_e-{args.e}_n-{args.n*args.K}_nh-{args.nh}.npz")
+    savepath = os.path.join(args.save_dir, f"sergio_K-{args.K}_p-{p}_e-{args.e}_n-{args.n * args.K}_nh-{args.nh}.npz")
     np.savez(savepath, expression=expr_mat, task_labels=task_labels, task_adjacencies=G_adj, true_adjacency=T_adj)
