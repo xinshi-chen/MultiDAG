@@ -11,6 +11,8 @@ setup(name='multidag',
           'numpy',
           'tqdm',
           'networkx',
-          'scipy'
+          'scipy',
+          'scikit-learn',
+          'matplotlib',
       ],
 )
