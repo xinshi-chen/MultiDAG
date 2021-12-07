@@ -4,6 +4,7 @@ from tqdm import tqdm
 from multidag.common.consts import DEVICE, OPTIMIZER
 from multidag.dag_utils import h_W, count_accuracy, is_dag
 from multidag.model import LSEM
+from multidag.sergio_dataset import SergioDataset
 import os
 import numpy as np
 
@@ -16,6 +17,7 @@ def MSE(w1, w2):
     assert len(w2.shape) == 3
     m = w1.shape[0]
     return ((w1 - w2) ** 2).view(m, -1).sum(dim=-1).mean()
+
 
 def W_dist(w1, w2, norm='l1'):
     assert len(w1.shape) == 3
@@ -40,6 +42,7 @@ class Trainer:
         self.gn = gn
         self.g_dag = g_dag
         self.db = data_base
+        self.dynamic_rho = not isinstance(self.db, SergioDataset)  # Disable dynamic rho when using SERGIO
         if K_mask is None:
             self.K_mask = np.arange(self.db.K)
             self.K_mask = np.arange(self.db.K)
@@ -53,7 +56,7 @@ class Trainer:
         # TODO hyperparameters may be different
         self.hyperparameter = dict()
         default = {'rho': 0.1, 'lambda': 1.0, 'c': 1.0, 'eta': 0.5, 'gamma': 1e-4,
-                   'mu': 10.0, 'dual_interval': 50, 'init':  1}
+                   'mu': 10.0, 'dual_interval': 50, 'init': 1, 'alpha': 0}
 
         for key in default:
             if key in hyperparameters:
@@ -75,7 +78,7 @@ class Trainer:
         """
         progress_bar = tqdm(range(start_epoch, start_epoch + epochs))
         dsc = ''
-        batch_size = min([self.n, 1000 // len(self.K_mask)])
+        batch_size = self.n
         X = self.db.load_data(batch_size=batch_size, device=DEVICE)[self.K_mask]
         for e in progress_bar:
             self._train_epoch(e, X, progress_bar, dsc, loss_type)
@@ -103,10 +106,11 @@ class Trainer:
             self.gamma *= 0.99
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
-            # if log['SE'] / self.se > 1.05:
-            #     self.rho *= 0.95
-            # elif log['SE'] / self.se < 0.95:
-            #     self.rho *= 1.05
+            if self.dynamic_rho:
+                if log['SE'] / self.se > log['l1/l2'] / self.gn + 0.05:
+                    self.rho *= 0.98
+                elif log['SE'] / self.se < log['l1/l2'] / self.gn - 0.05:
+                    self.rho *= 1.02
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
 
@@ -126,29 +130,31 @@ class Trainer:
         mu_one = self.hyperparameter['mu'] * one
 
         conn = h_W[self.constraint_type](self.g_dag.T)
-        lambda_conn = ld.mean() * conn * self.db.p
-        c_conn_2 = 0.5 * c.mean() * conn ** 2 * self.db.p
+        lambda_conn = ld.mean() * conn
+        c_conn_2 = 0.5 * c.mean() * conn ** 2
 
-        h_D = h_W[self.constraint_type](G_D)
-        # if h_D.sum().item() == 0:
-        #     for i in range(len(h_D)):
-        #         assert is_dag(G_D[i].detach().numpy())
-        lambda_h_wD = (ld * h_D).mean() * self.db.p  # lagrangian term
-        c_hw_2 = 0.5 * (c * h_D * h_D).mean() * self.db.p # l2 penalty
+        if self.hyperparameter['alpha'] == 0:
+            h_D = 0
+            lambda_h_wD = 0
+            c_hw_2 = 0
+        else:
+            h_D = h_W[self.constraint_type](G_D)
+            lambda_h_wD = (ld * h_D).mean()  # lagrangian term
+            c_hw_2 = 0.5 * (c * h_D * h_D).mean() # l2 penalty
 
         # group norm
         w_l1_l2 = torch.linalg.norm(G_D, ord=2, dim=0).sum()
         rho_w_l1 = self.rho * w_l1_l2 / X.shape[0] / (self.db.n / 10)
 
-        loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + lambda_h_wD + c_hw_2
+        loss = loss_se + lambda_conn + c_conn_2 + mu_one + rho_w_l1 + (lambda_h_wD + c_hw_2)
 
         log = {'SE': loss_se.item(),
                'l1/l2': w_l1_l2.item(),
-               'h_D': h_D.mean().item(),
+               'h_D': h_D.mean().item() if self.hyperparameter['alpha'] > 0 else 0,
                'conn': conn.item(),
                'one': one.item()
                }
-        return loss, h_D.mean().item(), log
+        return loss, conn.mean().item(), log
 
     def save(self):
         return {'G': self.g_dag.G.detach().cpu().numpy(), 'T': self.g_dag.T.detach().cpu().numpy()}

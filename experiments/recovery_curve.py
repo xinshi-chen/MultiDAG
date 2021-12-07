@@ -39,10 +39,11 @@ s = [120, 288, 672, 1536, 3456, 7680]
 d = [5, 6, 7, 8, 9, 10]
 sizes = [1, 2, 4, 8, 16, 32]
 
-fig, ax = plt.subplots(nrows=1, ncols=len(p), figsize=(24,5))
-sns.set(font_scale=1.5)
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8,6))
 color = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 label = [f'p={pp}' for pp in p]
+marker = ['.', 'P', 'o', 'v']
+linestyle = ['-', '--', '-.', ':', '']
 for idx in range(len(p)):
     # group_size * sample_size * task * configs
     result = {key: {n: [[] for _ in range(cmd_args.K)] for n in n_samples} for i, key in enumerate(sizes)}
@@ -81,18 +82,18 @@ for idx in range(len(p)):
             result[size][n] = np.mean(temp)
     result = np.array([[result[size][n] for size in sizes] for n in n_samples])
     print(result)
-    temp = sns.heatmap(result, annot=True, linewidths=.5, cbar=False, ax=ax[idx],
-                xticklabels=sizes, yticklabels=n_samples)
-    ax[idx].set_title(f'p = {p[idx]}', fontsize=22)
-    temp.set_yticklabels(n_samples, size=20)
-    temp.set_xticklabels(sizes, size=20)
-    ax[idx].set_xlabel('Number of Tasks', fontsize=22)
     # ax[idx].imshow(result, cmap='hot', interpolation='nearest')
-#     y = accuracy(result)
-#     x = [np.sqrt(10 * 2**i * p[idx]/ (s0[idx]**2 * np.log(p[idx]))) for i in range(len(y))]
-#     ax[-1].plot(x, y, color=color[idx], label=label[idx])
+    y = accuracy(result)
+    x = [np.sqrt(10 * 2**i * p[idx]/ (s0[idx]**2 * np.log(p[idx]))) for i in range(len(y))]
+    ax.plot(x, y, color=color[idx], label=label[idx], linestyle=linestyle[idx], marker=marker[idx])
 # ax[-1].set_xlim([0,2])
-# ax[-1].legend()
-ax[0].set_ylabel('Number of Samples per Task', fontsize=22)
+ax.legend(loc='lower right', prop={'size': 24})
+ax.set_ylabel('Recovery Probability', fontsize=20)
+ax.set_xlabel(r'$\theta$', fontsize=20)
+ax.set_xscale('log', base=2)
+plt.grid(axis='y', linestyle='dashed')
+
+for item in ([ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
+    item.set_fontsize(20)
 # plt.show()
-plt.savefig(f'figs/heatmap.pdf', bbox_inches='tight')
+plt.savefig(f'figs/curve.pdf', bbox_inches='tight')

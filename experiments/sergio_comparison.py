@@ -18,8 +18,8 @@ sim_file = cmd_args.real_dir.split('/')[-1]
 multidag_result = []
 with open(f'./{home_dir}/{sim_file}/rho-{cmd_args.rho}_lambda-{cmd_args.ld}_'
           f'c-{cmd_args.c}_gamma-{cmd_args.gamma}_'
-          f'eta-{cmd_args.eta}_mu-{cmd_args.mu}_dual_interval-{cmd_args.dual_interval}/multidag_'
-          f'group_size-{db.K}-{0}-{db.K}.pkl', 'rb') as handle:
+          f'eta-{cmd_args.eta}_mu-{cmd_args.mu}_dual_interval-{cmd_args.dual_interval}_'
+          f'alpha-{cmd_args.alpha}/multidag_group_size-{db.K}-{0}-{db.K}.pkl', 'rb') as handle:
     model = pickle.load(handle)[0]
 
 # Measure recovery accuracy

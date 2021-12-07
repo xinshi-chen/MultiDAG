@@ -17,14 +17,16 @@ cmd_opt.add_argument('-K', type=int, default=16, help='number of tasks')
 cmd_opt.add_argument('-d', type=int, default=10, help='number of parents')
 cmd_opt.add_argument('--group_size', type=int, default=2, help='group size used in learning')
 cmd_opt.add_argument('--group_start', type=int, default=0)
+cmd_opt.add_argument('--group_end', type=int, default=4)
+cmd_opt.add_argument('--group_idx', type=int, default=0)
 
 # hyperparameters for training
 cmd_opt.add_argument('--baseline', action='store_true',  help='use residual-variance ordering baseline (see reviewer comments)')
 cmd_opt.add_argument('-batch_size', type=int, default=128, help='batch size')
 cmd_opt.add_argument('-g_lr', type=float, default=1e-3, help='learning rate of G_DAG')
 
-cmd_opt.add_argument('-weight_decay', type=float, default=1e-5)
-cmd_opt.add_argument('-num_epochs', type=int, default=10000, help='num epochs')
+cmd_opt.add_argument('-weight_decay', type=float, default=0)
+cmd_opt.add_argument('-num_epochs', type=int, default=20000, help='num epochs')
 cmd_opt.add_argument('-optimizer', type=str, default='adam')
 
 cmd_opt.add_argument('-start_epoch', type=int, default=0)
@@ -34,10 +36,10 @@ cmd_opt.add_argument('--hw_type', type=str, default='notears', choices=['notears
 cmd_opt.add_argument('-rho', type=float, default=1)
 cmd_opt.add_argument('-ld', type=float, default=1)
 cmd_opt.add_argument('-c', type=float, default=1)
-cmd_opt.add_argument('-eta', type=float, default=0.412)
+cmd_opt.add_argument('-eta', type=float, default=0.125)
 cmd_opt.add_argument('-mu', type=float, default=1)
 cmd_opt.add_argument('-gamma', type=float, default=1e-5)
-# cmd_opt.add_argument('-gamma', type=float, default=0)
+cmd_opt.add_argument('-alpha', type=float, default=0)
 cmd_opt.add_argument('--dual_interval', type=int, default=50)
 cmd_opt.add_argument('--threshold', type=float, default=0.3)
 

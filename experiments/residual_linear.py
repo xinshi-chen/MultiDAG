@@ -56,7 +56,8 @@ def solve_residual(cmd_args, db, group_size=1, group_start=0):
     # G_DAG
     assert group_size <= db.K
     hyperparameter = {'rho': cmd_args.rho, 'lambda': cmd_args.ld, 'c': cmd_args.c, 'gamma': cmd_args.gamma,
-                      'eta': cmd_args.eta, 'mu': cmd_args.mu, 'dual_interval': cmd_args.dual_interval}
+                      'eta': cmd_args.eta, 'mu': cmd_args.mu, 'dual_interval': cmd_args.dual_interval,
+                      'alpha': cmd_args.alpha}
     hp = ''
     for key in hyperparameter:
         hp += key + '-' + f'{hyperparameter[key]}' + '_'

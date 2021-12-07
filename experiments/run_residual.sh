@@ -5,8 +5,8 @@ e=10  # Edge perturbations per task
 nh=0.05  # SERGIO hill coefficient
 K_vals=(1 1 10)  # Tasks
 n_task_vals=(1000 100 100)  # Samples per task, must be the same length as K
-baseline_ld_vals=(0.01 0.1 1)  # Graphical lasso L1 penalty (recovery hyperparam)
-threshold_vals=(0.5 0.8)  # Threshold for true vs. spurious edges (comparison hyperparam)
+baseline_ld_vals=(0.1)  # Graphical lasso L1 penalty (recovery hyperparam)
+threshold_vals=(0.5)  # Threshold for true vs. spurious edges (comparison hyperparam)
 
 for i in ${!K_vals[*]}; do
   K=${K_vals[i]}
