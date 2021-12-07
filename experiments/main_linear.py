@@ -33,6 +33,9 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
     else:
         g_dag = G_DAG(num_dags=group_size, p=cmd_args.p).to(DEVICE)
 
+    if cmd_args.ld > 1 and cmd_args.c > 1:
+        g_dag.T = db.Perm
+
     # ---------------------
     #  Optimizer
     # ---------------------
@@ -62,38 +65,10 @@ def train(cmd_args, db, real_se, real_gn, group_size=1, group_start=0):
 
 
 if __name__ == '__main__':
-    # results = {10: [], 20: [], 40: [], 80: [], 160: [], 320: [], 640: []}
-    if cmd_args.K == 32:
-        group_size = [1] * 32 + [2] * 16 + [4] * 8 + [8] * 4 + [16] * 5
-        group_start = list(range(32)) + list(range(0, 32, 2)) + list(range(0, 32, 4)) + list(range(0, 28, 4)) + list(
-            range(0, 20, 4))
-        nums = [0, 32, 48, 56, 63, 68]
-    elif cmd_args.K == 64:
-        group_size = [1] * 64 + [2] * 32 + [4] * 16 + [8] * 8 + [16] * 4 + [32] * 2
-        group_start = list(range(64)) + list(range(0, 64, 2)) + list(range(0, 64, 4)) + list(range(0, 64, 8)) + list(
-            range(0, 64, 16)) + list(range(0, 64, 32))
-        nums = list(range(0, 64, 16)) + list(range(64, 96, 8)) + list(range(96, 112, 4)) + list(range(112, 120, 2)) + list(range(120, 124)) + list(range(124, 126)) + [126]
-        print(len(nums))
-    elif cmd_args.K == 256:
-        group_size = [1] * 256 + [2] * 128 + [4] * 64 + [8] * 32 + [16] * 16 + [32] * 8
-        group_start = list(range(256)) + list(range(0, 256, 2)) + list(range(0, 256, 4)) + list(range(0, 256, 8)) + \
-            list(range(0, 256, 16)) + list(range(0, 256, 32))
-        nums = list(range(0, 256, 64)) + list(range(256, 384, 32)) + list(range(384, 448, 16)) + \
-               list(range(448, 480, 8)) + list(range(480, 496, 4)) + list(range(496, 504, 4)) + [504]
-    else:
-        raise NotImplementedError
-
-    for k in range(nums[cmd_args.group_idx], nums[cmd_args.group_idx+1]):
-        cmd_args.group_start = group_start[k]
-        cmd_args.group_size = group_size[k]
-        db = Dataset(p=cmd_args.p,
-                     n=cmd_args.n_sample,
-                     K=cmd_args.K,
-                     s0=cmd_args.s0,
-                     s=cmd_args.s,
-                     d=cmd_args.d,
-                     w_range=(0.5, 2.0), verbose=True)
+    if cmd_args.real_dir:
+        db = SergioDataset(cmd_args.real_dir)
         print(f'*** solving {db.hp}_group_size-{cmd_args.group_size}-{cmd_args.group_start}-{cmd_args.group_start+cmd_args.group_size} ***')
+        os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
         X = db.X[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size].detach().numpy()
         G = db.G[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size]
         real_se = np.square(X - X@G).sum(axis=-1).mean()
@@ -101,3 +76,43 @@ if __name__ == '__main__':
         print('real se: ', real_se)
         print('real group norm: ', real_gn)
         train(cmd_args, db, real_se, real_gn, group_size=cmd_args.group_size, group_start=cmd_args.group_start)
+    else:
+        # results = {10: [], 20: [], 40: [], 80: [], 160: [], 320: [], 640: []}
+        if cmd_args.K == 32:
+            group_size = [1] * 32 + [2] * 16 + [4] * 8 + [8] * 4 + [16] * 5
+            group_start = list(range(32)) + list(range(0, 32, 2)) + list(range(0, 32, 4)) + list(range(0, 28, 4)) + list(
+                range(0, 20, 4))
+            nums = [0, 32, 48, 56, 63, 68]
+        elif cmd_args.K == 64:
+            group_size = [1] * 64 + [2] * 32 + [4] * 16 + [8] * 8 + [16] * 4 + [32] * 2
+            group_start = list(range(64)) + list(range(0, 64, 2)) + list(range(0, 64, 4)) + list(range(0, 64, 8)) + list(
+                range(0, 64, 16)) + list(range(0, 64, 32))
+            nums = list(range(0, 64, 16)) + list(range(64, 96, 8)) + list(range(96, 112, 4)) + list(range(112, 120, 2)) + list(range(120, 124)) + list(range(124, 126)) + [126]
+            print(len(nums))
+        elif cmd_args.K == 256:
+            group_size = [1] * 256 + [2] * 128 + [4] * 64 + [8] * 32 + [16] * 16 + [32] * 8
+            group_start = list(range(256)) + list(range(0, 256, 2)) + list(range(0, 256, 4)) + list(range(0, 256, 8)) + \
+                list(range(0, 256, 16)) + list(range(0, 256, 32))
+            nums = list(range(0, 256, 64)) + list(range(256, 384, 32)) + list(range(384, 448, 16)) + \
+                   list(range(448, 480, 8)) + list(range(480, 496, 4)) + list(range(496, 504, 4)) + [504]
+        else:
+            raise NotImplementedError
+
+        for k in range(nums[cmd_args.group_idx], nums[cmd_args.group_idx+1]):
+            cmd_args.group_start = group_start[k]
+            cmd_args.group_size = group_size[k]
+            db = Dataset(p=cmd_args.p,
+                         n=cmd_args.n_sample,
+                         K=cmd_args.K,
+                         s0=cmd_args.s0,
+                         s=cmd_args.s,
+                         d=cmd_args.d,
+                         w_range=(0.5, 2.0), verbose=True)
+            print(f'*** solving {db.hp}_group_size-{cmd_args.group_size}-{cmd_args.group_start}-{cmd_args.group_start+cmd_args.group_size} ***')
+            X = db.X[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size].detach().numpy()
+            G = db.G[cmd_args.group_start:cmd_args.group_start + cmd_args.group_size]
+            real_se = np.square(X - X@G).sum(axis=-1).mean()
+            real_gn = np.linalg.norm(G, axis=0).sum()
+            print('real se: ', real_se)
+            print('real group norm: ', real_gn)
+            train(cmd_args, db, real_se, real_gn, group_size=cmd_args.group_size, group_start=cmd_args.group_start)

@@ -12,9 +12,10 @@ class SergioDataset(object):
         :param dir: .npz data dir
         """
         data = np.load(dir)
+        self.labels = data['task_labels']
         self.K = data['task_labels'].max() + 1
-        self.X = data['expression']
-        self.X = torch.Tensor(self.X.reshape(self.K, -1, self.X.shape[-1]))
+        self.X_raw = data['expression']
+        self.X = torch.Tensor(self.X_raw.reshape(self.K, -1, self.X_raw.shape[-1]))
         self.G = data['task_adjacencies']
         self.T = np.expand_dims(data['true_adjacency'], 0)
         self.n = self.X.shape[1]
@@ -27,3 +28,11 @@ class SergioDataset(object):
             return self.X[:, idx]
         else:
             return self.X[:, idx].to(device)
+
+    def load_by_task(self):
+        data_by_task = []
+        for task in range(self.K):
+            idx = self.labels == task
+            data_by_task.append(self.X_raw[idx])
+        return data_by_task
+

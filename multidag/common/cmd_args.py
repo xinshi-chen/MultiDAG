@@ -21,6 +21,7 @@ cmd_opt.add_argument('--group_end', type=int, default=4)
 cmd_opt.add_argument('--group_idx', type=int, default=0)
 
 # hyperparameters for training
+cmd_opt.add_argument('--baseline', action='store_true',  help='use residual-variance ordering baseline (see reviewer comments)')
 cmd_opt.add_argument('-batch_size', type=int, default=128, help='batch size')
 cmd_opt.add_argument('-g_lr', type=float, default=1e-3, help='learning rate of G_DAG')
 

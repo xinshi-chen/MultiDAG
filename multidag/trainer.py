@@ -4,6 +4,7 @@ from tqdm import tqdm
 from multidag.common.consts import DEVICE, OPTIMIZER
 from multidag.dag_utils import h_W, count_accuracy, is_dag
 from multidag.model import LSEM
+from multidag.sergio_dataset import SergioDataset
 import os
 import numpy as np
 
@@ -16,6 +17,7 @@ def MSE(w1, w2):
     assert len(w2.shape) == 3
     m = w1.shape[0]
     return ((w1 - w2) ** 2).view(m, -1).sum(dim=-1).mean()
+
 
 def W_dist(w1, w2, norm='l1'):
     assert len(w1.shape) == 3
@@ -40,6 +42,7 @@ class Trainer:
         self.gn = gn
         self.g_dag = g_dag
         self.db = data_base
+        self.dynamic_rho = not isinstance(self.db, SergioDataset)  # Disable dynamic rho when using SERGIO
         if K_mask is None:
             self.K_mask = np.arange(self.db.K)
             self.K_mask = np.arange(self.db.K)
@@ -103,10 +106,11 @@ class Trainer:
             self.gamma *= 0.99
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] *= 0.99
-            if log['SE'] / self.se > log['l1/l2'] / self.gn + 0.05:
-                self.rho *= 0.98
-            elif log['SE'] / self.se < log['l1/l2'] / self.gn - 0.05:
-                self.rho *= 1.02
+            if self.dynamic_rho:
+                if log['SE'] / self.se > log['l1/l2'] / self.gn + 0.05:
+                    self.rho *= 0.98
+                elif log['SE'] / self.se < log['l1/l2'] / self.gn - 0.05:
+                    self.rho *= 1.02
             self.ld = torch.clamp(self.ld + self.c * (1e3 - (1e3 - h_D) * ((1e3 - h_D) > 0)), min=0, max=1e12)
             self.c = torch.clamp(self.c * (1 + self.hyperparameter['eta']), min=0, max=1e15)
 
