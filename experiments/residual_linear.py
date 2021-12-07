@@ -81,7 +81,6 @@ def solve_residual(cmd_args, db, group_size=1, group_start=0):
         pickle.dump(models, handle)
 
 
-
 if __name__ == '__main__':
     db = SergioDataset(cmd_args.real_dir)
     print(f'*** solving {db.hp}_group_size-{cmd_args.group_size}-{cmd_args.group_start}-{cmd_args.group_start+cmd_args.group_size} ***')
