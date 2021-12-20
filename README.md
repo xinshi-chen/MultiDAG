@@ -36,7 +36,11 @@ Please navigate to the root of this repository, and run the following command to
 pip install -e .
 ```
 
-## Run the experiments
-Navigate to the `experiments/` folder and use the run files to run the experiments. 
-
+## Experiment 1: Simulations
 Descriptions of implementation details coming soon.....
+
+## Experiment 2: Recovering gene regulatory networks
+We simulate single-cell gene regulatory networks with [SERGIO](https://github.com/PayamDiba/SERGIO) and recover them with MultiDAG. 
+When the number of samples per network is limited, MultiDAG improves overall accuracy by sharing information between recovery tasks.
+
+To reproduce our results, navigate to the `experiments/` folder and run `run_sergio.sh`
